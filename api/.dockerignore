@@ -1,0 +1,17 @@
+.venv
+.git
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.env
+.env.*
+uploads/*
+!uploads/.gitkeep
+parsed_outputs/*
+!parsed_outputs/.gitkeep
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

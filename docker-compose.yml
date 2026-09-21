@@ -1,0 +1,86 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-}
+        - API_INTERNAL_URL=http://api:8080
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - API_INTERNAL_URL=http://api:8080
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:?Set INTERNAL_API_KEY}
+      - RUNNING_IN_DOCKER=true
+      - TZ=${TZ:-Asia/Jakarta}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    volumes:
+      - web_auth:/app/auth
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - chatbot-network
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-mushibot_db}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:?Set INTERNAL_API_KEY}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - RUNNING_IN_DOCKER=true
+      - NEXTJS_URL=http://web:3000
+      - FASTAPI_INTERNAL_URL=http://127.0.0.1:8080
+      - ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - LLAMA_CLOUD_API_KEY=${LLAMA_CLOUD_API_KEY:-}
+      - DIGITAL_OCEAN_API_KEY=${DIGITAL_OCEAN_API_KEY:-}
+      - TZ=${TZ:-Asia/Jakarta}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:${API_PORT:-8080}:8080"
+    volumes:
+      - api_uploads:/app/uploads
+      - api_cache:/app/.cache
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - chatbot-network
+
+  db:
+    image: pgvector/pgvector:pg16
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-mushibot_db}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-mushibot_db}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - chatbot-network
+
+volumes:
+  postgres_data:
+  api_uploads:
+  api_cache:
+  web_auth:
+
+networks:
+  chatbot-network:
+    driver: bridge
