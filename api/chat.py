@@ -11,6 +11,7 @@ from chat_context import (
     WHATSAPP_FORMAT_RULES,
     _tool_map,
     current_chat_recipient_var,
+    current_chat_channel_id_var,
     get_current_time_str,
     get_enabled_tools,
 )
@@ -47,6 +48,7 @@ __all__ = [
     "get_current_time_str",
     "_tool_map",
     "current_chat_recipient_var",
+    "current_chat_channel_id_var",
     "get_enabled_tools",
     "normalize_model_name",
     "get_active_chat_llm",

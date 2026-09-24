@@ -9,9 +9,46 @@ interface ReminderRowChannelsProps {
 }
 
 export default function ReminderRowChannels({ rem }: ReminderRowChannelsProps) {
+  const meta =
+    typeof rem.cmetadata === "object" && rem.cmetadata !== null && !Array.isArray(rem.cmetadata)
+      ? (rem.cmetadata as Record<string, unknown>)
+      : undefined;
+
+  const rawRecMeta = meta?._recipients;
+  const recMeta =
+    typeof rawRecMeta === "object" && rawRecMeta !== null && !Array.isArray(rawRecMeta)
+      ? (rawRecMeta as Record<string, unknown>)
+      : undefined;
+
   const isAllRecipients =
     rem.target_recipients?.startsWith("ALL") ||
-    ((rem.cmetadata as Record<string, unknown>)?._recipients as Record<string, unknown> | undefined)?.mode === "all";
+    recMeta?.mode === "all";
+
+  const rawGroupSubjects = recMeta?.group_subjects ?? meta?.group_subjects;
+  const groupSubjects =
+    typeof rawGroupSubjects === "object" && rawGroupSubjects !== null && !Array.isArray(rawGroupSubjects)
+      ? (rawGroupSubjects as Record<string, string>)
+      : undefined;
+
+  const displayRecipients = React.useMemo(() => {
+    if (!rem.target_recipients) return "All Channel Members";
+    if (
+      !groupSubjects ||
+      typeof groupSubjects !== "object" ||
+      Array.isArray(groupSubjects) ||
+      Object.keys(groupSubjects).length === 0
+    ) {
+      return rem.target_recipients;
+    }
+
+    let text = rem.target_recipients;
+    for (const [jid, subject] of Object.entries(groupSubjects)) {
+      if (typeof jid === "string" && typeof subject === "string" && jid && subject) {
+        text = text.split(jid).join(subject);
+      }
+    }
+    return text;
+  }, [rem.target_recipients, groupSubjects]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -54,7 +91,7 @@ export default function ReminderRowChannels({ rem }: ReminderRowChannelsProps) {
           whiteSpace: "nowrap",
           maxWidth: "190px",
         }}
-        title={rem.target_recipients || "All channel members"}
+        title={displayRecipients}
       >
         {isAllRecipients ? (
           <span
@@ -67,10 +104,10 @@ export default function ReminderRowChannels({ rem }: ReminderRowChannelsProps) {
             }}
           >
             <Radio style={{ width: "11px", height: "11px" }} />
-            <span>{rem.target_recipients || "All Channel Members"}</span>
+            <span>{displayRecipients}</span>
           </span>
         ) : (
-          <span>{rem.target_recipients ? `To: ${rem.target_recipients}` : "All Channel Members"}</span>
+          <span>{rem.target_recipients ? `To: ${displayRecipients}` : "All Channel Members"}</span>
         )}
       </div>
     </div>

@@ -66,6 +66,7 @@ export function useReminderForm({
   const [reminderIsActiveInput, setReminderIsActiveInput] = useState(true);
   const [reminderFormError, setReminderFormError] = useState<string | null>(null);
   const [savingReminder, setSavingReminder] = useState(false);
+  const [groupSubjects, setGroupSubjects] = useState<Record<string, string>>({});
 
   const [waGroups, setWaGroups] = useState<WaGroupItem[]>([]);
   const [loadingWaGroups, setLoadingWaGroups] = useState(false);
@@ -83,11 +84,14 @@ export function useReminderForm({
     return () => { document.removeEventListener("mousedown", handleClickOutside); };
   }, [showGroupPicker, showBlGroupPicker]);
 
-  const fetchWaGroups = async (force: boolean = false) => {
+  const fetchWaGroups = async (channelIdOrForce?: string | boolean, forceParam: boolean = false) => {
+    const isChanId = typeof channelIdOrForce === "string";
+    const force = typeof channelIdOrForce === "boolean" ? channelIdOrForce : forceParam;
+    const targetId = isChanId ? channelIdOrForce : (reminderChannelIdInput || "default");
     try {
       await Promise.resolve();
       setLoadingWaGroups(true);
-      const res = await fetch(getWaGroupsFetchUrl(reminderChannelIdInput, force), {
+      const res = await fetch(getWaGroupsFetchUrl(targetId, force), {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) {
@@ -135,6 +139,7 @@ export function useReminderForm({
     setReminderMaxRunsInput(st.maxRuns);
     setReminderIsActiveInput(st.isActive);
     setReminderFormError(st.formError);
+    setGroupSubjects(st.groupSubjects || {});
     setShowGroupPicker(false);
     setShowBlGroupPicker(false);
   };
@@ -142,12 +147,17 @@ export function useReminderForm({
   useEffect(() => {
     if (!isOpen) return;
     queueMicrotask(() => {
+      let initialChanId = "default";
       if (editingReminder) {
-        applyState(hydrateReminderFormState(editingReminder, parseCronToManualSettings));
+        const hydrated = hydrateReminderFormState(editingReminder, parseCronToManualSettings);
+        applyState(hydrated);
+        initialChanId = hydrated.channelId || "default";
       } else {
-        applyState(getDefaultReminderFormState(availableChannels));
+        const defaultState = getDefaultReminderFormState(availableChannels);
+        applyState(defaultState);
+        initialChanId = defaultState.channelId || "default";
       }
-      void fetchWaGroups();
+      void fetchWaGroups(initialChanId);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, editingReminder]);
@@ -187,9 +197,10 @@ export function useReminderForm({
         minInterval: reminderMinInterval, maxInterval: reminderMaxInterval, intervalUnit: reminderIntervalUnit,
         useTimeWindow: reminderUseTimeWindow, windowStartTime: reminderWindowStartTime,
         windowEndTime: reminderWindowEndTime, targetDate: reminderTargetDate, maxRuns: reminderMaxRunsInput,
-        variables: reminderVariables,
+        variables: reminderVariables, groupSubjects,
       },
-      generatedCron
+      generatedCron,
+      waGroups
     );
 
     setSavingReminder(true);
@@ -215,46 +226,27 @@ export function useReminderForm({
   };
 
   return {
-    reminderTitleInput, setReminderTitleInput,
-    reminderVariables, setReminderVariables,
-    reminderMessageInput, setReminderMessageInput,
-    reminderChannelTypeInput, setReminderChannelTypeInput,
-    reminderChannelIdInput, setReminderChannelIdInput,
-    reminderRecipientMode, setReminderRecipientMode,
-    reminderAllowPrivate, setReminderAllowPrivate,
-    reminderAllowGroup, setReminderAllowGroup,
-    reminderRecipientList, setReminderRecipientList,
-    reminderBlacklistList, setReminderBlacklistList,
-    editingRecipientIdx, setEditingRecipientIdx,
-    editingBlacklistIdx, setEditingBlacklistIdx,
-    reminderTargetDate, setReminderTargetDate,
-    reminderCountryCode, setReminderCountryCode,
-    reminderFreqType, setReminderFreqType,
-    reminderTimeMode, setReminderTimeMode,
-    reminderTime, setReminderTime,
-    reminderEndTime, setReminderEndTime,
-    reminderDays, setReminderDays,
-    reminderMinute, setReminderMinute,
-    reminderIntervalMinutes, setReminderIntervalMinutes,
-    reminderDayOfMonth, setReminderDayOfMonth,
-    reminderMinInterval, setReminderMinInterval,
-    reminderMaxInterval, setReminderMaxInterval,
-    reminderIntervalUnit, setReminderIntervalUnit,
-    reminderUseTimeWindow, setReminderUseTimeWindow,
-    reminderWindowStartTime, setReminderWindowStartTime,
-    reminderWindowEndTime, setReminderWindowEndTime,
-    reminderTimezoneInput, setReminderTimezoneInput,
-    reminderMaxRunsInput, setReminderMaxRunsInput,
-    reminderIsActiveInput, setReminderIsActiveInput,
-    reminderFormError, setReminderFormError,
-    savingReminder, setSavingReminder,
-    waGroups, setWaGroups,
-    loadingWaGroups, setLoadingWaGroups,
-    showGroupPicker, setShowGroupPicker,
-    showBlGroupPicker, setShowBlGroupPicker,
-    groupPickerRef, blGroupPickerRef,
-    fetchWaGroups,
-    getRecipientDisplayInfo: (item: string) => resolveRecipientDisplayInfo(item, waGroups),
+    reminderTitleInput, setReminderTitleInput, reminderVariables, setReminderVariables,
+    reminderMessageInput, setReminderMessageInput, reminderChannelTypeInput, setReminderChannelTypeInput,
+    reminderChannelIdInput, setReminderChannelIdInput, reminderRecipientMode, setReminderRecipientMode,
+    reminderAllowPrivate, setReminderAllowPrivate, reminderAllowGroup, setReminderAllowGroup,
+    reminderRecipientList, setReminderRecipientList, reminderBlacklistList, setReminderBlacklistList,
+    editingRecipientIdx, setEditingRecipientIdx, editingBlacklistIdx, setEditingBlacklistIdx,
+    reminderTargetDate, setReminderTargetDate, reminderCountryCode, setReminderCountryCode,
+    reminderFreqType, setReminderFreqType, reminderTimeMode, setReminderTimeMode,
+    reminderTime, setReminderTime, reminderEndTime, setReminderEndTime,
+    reminderDays, setReminderDays, reminderMinute, setReminderMinute,
+    reminderIntervalMinutes, setReminderIntervalMinutes, reminderDayOfMonth, setReminderDayOfMonth,
+    reminderMinInterval, setReminderMinInterval, reminderMaxInterval, setReminderMaxInterval,
+    reminderIntervalUnit, setReminderIntervalUnit, reminderUseTimeWindow, setReminderUseTimeWindow,
+    reminderWindowStartTime, setReminderWindowStartTime, reminderWindowEndTime, setReminderWindowEndTime,
+    reminderTimezoneInput, setReminderTimezoneInput, reminderMaxRunsInput, setReminderMaxRunsInput,
+    reminderIsActiveInput, setReminderIsActiveInput, reminderFormError, setReminderFormError,
+    savingReminder, setSavingReminder, waGroups, setWaGroups,
+    loadingWaGroups, setLoadingWaGroups, showGroupPicker, setShowGroupPicker,
+    showBlGroupPicker, setShowBlGroupPicker, groupPickerRef, blGroupPickerRef,
+    fetchWaGroups, groupSubjects, setGroupSubjects,
+    getRecipientDisplayInfo: (item: string) => resolveRecipientDisplayInfo(item, waGroups, groupSubjects),
     handleSaveReminder,
   };
 }

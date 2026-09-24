@@ -1,3 +1,4 @@
+import os
 import uuid
 import sys
 import json
@@ -121,7 +122,7 @@ async def push_to_whatsapp(jid: str, text: str):
 
 class ChannelContext:
     """Prepared context for channel chat endpoints."""
-    def __init__(self, conv, history, user_id, channel_type, phone_formatted, title_str, target_jid):
+    def __init__(self, conv, history, user_id, channel_type, phone_formatted, title_str, target_jid, channel_id="default"):
         self.conv = conv
         self.history = history
         self.user_id = user_id
@@ -129,6 +130,7 @@ class ChannelContext:
         self.phone_formatted = phone_formatted
         self.title_str = title_str
         self.target_jid = target_jid
+        self.channel_id = channel_id
 
 
 def _prepare_channel_context(data: ChannelQueryRequest, db: Session) -> ChannelContext:
@@ -143,6 +145,7 @@ def _prepare_channel_context(data: ChannelQueryRequest, db: Session) -> ChannelC
 
     user_id = admin_user.id
     channel_type = (data.channel or "WHATSAPP").upper()
+    channel_id = data.channel_id or "default"
     session_timeout_sec = data.session_timeout or 300
 
     sender_raw = (data.sender_id or data.remote_jid or "").split("@")[0].strip().lstrip("+")
@@ -160,15 +163,13 @@ def _prepare_channel_context(data: ChannelQueryRequest, db: Session) -> ChannelC
         phone_formatted = sender_raw  # Strictly without '+' prefix for group IDs
         group_name = None
         try:
-            import httpx, os
-            nextjs_url = os.getenv("NEXTJS_URL", "http://web:3000")
-            resp = httpx.get(f"{nextjs_url}/api/channel/whatsapp?action=groups", timeout=2.0)
-            if resp.status_code == 200:
-                for g in resp.json().get("groups", []):
-                    clean_gid = g.get("id", "").replace("@g.us", "").replace("+", "").strip()
-                    if clean_gid == sender_raw:
-                        group_name = g.get("subject")
-                        break
+            from reminder_service import fetch_whatsapp_groups_cached
+            groups = fetch_whatsapp_groups_cached(channel_id=channel_id)
+            for g in groups:
+                clean_gid = str(g.get("id", "")).replace("@g.us", "").replace("+", "").strip()
+                if clean_gid == sender_raw:
+                    group_name = g.get("subject")
+                    break
         except Exception:
             pass
 
@@ -275,6 +276,7 @@ def _prepare_channel_context(data: ChannelQueryRequest, db: Session) -> ChannelC
         phone_formatted=phone_formatted,
         title_str=title_str,
         target_jid=data.remote_jid or (f"{digits_only}@s.whatsapp.net" if is_valid_phone else (data.sender_id if data.sender_id and "@" in data.sender_id else None)),
+        channel_id=channel_id,
     )
 
 
@@ -315,6 +317,7 @@ async def channel_query_async(
             system_prompt=data.system_prompt,
             channel=ctx.channel_type,
             current_recipient=ctx.target_jid or ctx.phone_formatted or data.remote_jid or data.sender_id,
+            channel_id=ctx.channel_id,
         )
         try:
             while True:
@@ -404,6 +407,7 @@ async def channel_query_stream(
         system_prompt=data.system_prompt,
         channel=ctx.channel_type,
         current_recipient=ctx.target_jid or ctx.phone_formatted or data.remote_jid or data.sender_id,
+        channel_id=ctx.channel_id,
     )
 
     conv_id = ctx.conv.id
@@ -490,6 +494,7 @@ async def channel_query(
         system_prompt=data.system_prompt,
         channel=ctx.channel_type,
         current_recipient=ctx.target_jid or ctx.phone_formatted or data.remote_jid or data.sender_id,
+        channel_id=ctx.channel_id,
     )
 
     all_turn_contents = []

@@ -80,7 +80,7 @@ export async function sendWhatsAppBroadcast(
 
   for (const raw of recipients) {
     const rawUpper = raw.trim().toUpperCase();
-    if (rawUpper === "ALL" || rawUpper.startsWith("ALL") || rawUpper === "DEFAULT") {
+    if (rawUpper === "ALL" || rawUpper.startsWith("ALL")) {
       // If ALL is requested, fetch all joined groups if allowGroup is true
       if (allowGroup) {
         try {
@@ -94,12 +94,16 @@ export async function sendWhatsAppBroadcast(
           console.error(`[WhatsApp Broadcast] Failed to fetch groups for ALL broadcast:`, err);
         }
       }
-    } else {
+    } else if (rawUpper !== "DEFAULT") {
       const normalizedJid = normalizeWhatsAppTargetJid(raw);
       if (normalizedJid && !targetJids.includes(normalizedJid)) {
         targetJids.push(normalizedJid);
       }
     }
+  }
+
+  if (targetJids.length === 0) {
+    return { success: false, sentCount: 0, errors: ["No valid target recipients found."] };
   }
 
   for (const jid of targetJids) {

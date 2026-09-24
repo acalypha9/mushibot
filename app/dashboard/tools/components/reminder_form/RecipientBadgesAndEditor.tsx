@@ -8,8 +8,9 @@ import {
   CountryCodePicker,
   splitPhoneNumber,
   extractCountryCodeFromInput,
-  combinePhoneNumber,
 } from "@/lib/countryCodes";
+import type { WaGroupItem } from "../../types";
+import { normalizeRecipientId } from "./reminderFormLogic";
 
 export interface RecipientBadgesAndEditorProps {
   channelType: "WHATSAPP" | "TELEGRAM";
@@ -20,6 +21,7 @@ export interface RecipientBadgesAndEditorProps {
   countryCode: string;
   setCountryCode: (val: string) => void;
   getDisplayInfo: (item: string) => { title: string; subtitle: string | null; isGroup: boolean };
+  waGroups?: WaGroupItem[];
 }
 
 export function RecipientBadgesAndEditor({
@@ -31,11 +33,12 @@ export function RecipientBadgesAndEditor({
   countryCode,
   setCountryCode,
   getDisplayInfo,
+  waGroups = [],
 }: RecipientBadgesAndEditorProps) {
   const commit = () => {
     if (editingIdx === null) return;
     const raw = recipientList[editingIdx] || "";
-    const formatted = combinePhoneNumber(raw, countryCode);
+    const formatted = normalizeRecipientId(raw, channelType, waGroups, countryCode);
     if (formatted.trim()) {
       setRecipientList((prev) => {
         const next = [...prev];

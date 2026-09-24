@@ -1,5 +1,9 @@
-import fs from "fs";
+import type fsType from "fs";
 import path from "path";
+
+function getFs(): typeof fsType {
+  return eval("require")("fs");
+}
 
 export function getMimeType(filePath: string): string {
   const ext = path.extname(filePath).toLowerCase();
@@ -43,6 +47,7 @@ export function getMimeType(filePath: string): string {
 export async function findAndSendFileAttachments(sock: any, targetJid: string, text: string) {
   if (!sock) return;
 
+  const fs = getFs();
   const sentPaths = new Set<string>();
   const baseDir = process.cwd();
   const publicFilesDir = path.join(baseDir, "public", "files");

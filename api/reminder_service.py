@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Union
 from langchain_core.tools import tool
 
 from services.scheduler import parse_natural_schedule
-from config import NEXTJS_URL
+from config import INTERNAL_API_KEY, INTERNAL_TOKEN, NEXTJS_URL
 
 
 def _parse_natural_schedule(
@@ -30,14 +30,15 @@ def normalize_whatsapp_recipient(recipient_str: str) -> str:
         return "ALL"
     if r.endswith("@g.us") or r.endswith("@lid"):
         return r
-    if r.startswith("120363") and not r.endswith("@g.us"):
+    if (r.startswith("120363") and len(r) >= 16) or bool(re.match(r"^\d{8,15}-\d{8,12}$", r)):
         return f"{r}@g.us"
     if r.endswith("@s.whatsapp.net"):
         c_dig = re.sub(r"\D", "", r.split("@")[0])
         if c_dig.startswith("08") and len(c_dig) >= 9:
             c_dig = "62" + c_dig[1:]
         return f"{c_dig}@s.whatsapp.net" if c_dig else r
-    # Digits with spaces/dashes/plus
+    if re.search(r"[a-zA-Z]", r):
+        return r
     c_dig = re.sub(r"\D", "", r)
     if c_dig.startswith("08") and len(c_dig) >= 9:
         c_dig = "62" + c_dig[1:]
@@ -49,15 +50,57 @@ def normalize_whatsapp_recipient(recipient_str: str) -> str:
 _whatsapp_groups_cache: Dict[str, Any] = {"data": [], "timestamp": 0.0}
 
 
+def fetch_whatsapp_groups_cached(channel_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    import time
+    import httpx
+    now_ts = time.time()
+    chan_key = (channel_id or "default").strip()
+    channels_cache = _whatsapp_groups_cache.setdefault("channels", {})
+    chan_entry = channels_cache.get(chan_key, {})
+    groups_data = chan_entry.get("data", [])
+    last_ts = chan_entry.get("timestamp", 0.0)
+
+    top_data = _whatsapp_groups_cache.get("data", [])
+    top_ts = _whatsapp_groups_cache.get("timestamp", 0.0)
+    if not groups_data and top_data and (abs(now_ts - top_ts) <= 60.0 or top_ts > now_ts):
+        groups_data = top_data
+        last_ts = top_ts
+
+    if (now_ts - last_ts > 60.0 or not groups_data) and not (top_ts > now_ts and top_data):
+        url = f"{NEXTJS_URL}/api/channel/whatsapp?action=groups&channel_id={chan_key}"
+        headers: Dict[str, str] = {}
+        secret = INTERNAL_API_KEY or INTERNAL_TOKEN
+        if secret:
+            headers["X-Internal-Secret"] = secret
+        try:
+            resp = httpx.get(url, headers=headers, timeout=3.0)
+            if resp.status_code == 200:
+                groups_data = resp.json().get("groups", [])
+                channels_cache[chan_key] = {"data": groups_data, "timestamp": now_ts}
+                _whatsapp_groups_cache["data"] = groups_data
+                _whatsapp_groups_cache["timestamp"] = now_ts
+        except Exception as err:
+            print(f"[WARN] Failed to fetch WhatsApp groups for channel '{chan_key}': {err}", file=sys.stderr, flush=True)
+
+    return groups_data
+
+
 def resolve_reminder_recipient(
     recipient: Optional[str],
     clean_channel: str,
+    channel_id: Optional[str] = None,
 ) -> Optional[str]:
     clean_recipient = recipient.strip() if (recipient and recipient.strip()) else None
 
-    if not clean_recipient or clean_recipient.lower() in (
-        "default", "current", "me", "saya", "user", "current user", "current / default recipient"
-    ):
+    if not channel_id:
+        try:
+            from chat_context import current_chat_channel_id_var
+            channel_id = current_chat_channel_id_var.get()
+        except Exception:
+            pass
+
+    default_names = {"default", "current", "me", "saya", "user", "current user", "current / default recipient"}
+    if not clean_recipient or clean_recipient.lower() in default_names:
         try:
             from chat import current_chat_recipient_var
             ctx_rec = current_chat_recipient_var.get()
@@ -66,13 +109,10 @@ def resolve_reminder_recipient(
         except Exception:
             pass
 
-        if not clean_recipient or clean_recipient.lower() in (
-            "default", "current", "me", "saya", "user", "current user", "current / default recipient"
-        ):
+        if not clean_recipient or clean_recipient.lower() in default_names:
             try:
                 from pathlib import Path
-                base_dir = Path(__file__).resolve().parent.parent
-                channels_file = base_dir / "auth" / "channels.json"
+                channels_file = Path(__file__).resolve().parent.parent / "auth" / "channels.json"
                 if channels_file.exists():
                     with open(channels_file, "r", encoding="utf-8") as f:
                         ch_data = json.load(f)
@@ -89,36 +129,34 @@ def resolve_reminder_recipient(
         return "ALL"
 
     if clean_recipient and clean_recipient != "ALL" and clean_channel == "WHATSAPP":
-        # Group name lookup if string has no digits
-        if (
-            not clean_recipient.endswith("@g.us")
-            and not clean_recipient.endswith("@s.whatsapp.net")
-            and not clean_recipient.endswith("@lid")
-            and not bool(re.search(r"\d", clean_recipient))
-        ):
-            try:
-                import time
-                import httpx
-                now_ts = time.time()
-                groups_data = _whatsapp_groups_cache.get("data", [])
-                if now_ts - _whatsapp_groups_cache.get("timestamp", 0.0) > 60.0 or not groups_data:
-                    resp = httpx.get(f"{NEXTJS_URL}/api/channel/whatsapp?action=groups", timeout=3.0)
-                    if resp.status_code == 200:
-                        groups_data = resp.json().get("groups", [])
-                        _whatsapp_groups_cache["data"] = groups_data
-                        _whatsapp_groups_cache["timestamp"] = now_ts
+        is_already_jid = (
+            clean_recipient.endswith("@g.us")
+            or clean_recipient.endswith("@s.whatsapp.net")
+            or clean_recipient.endswith("@lid")
+        )
+        is_modern_group_id = bool(re.match(r"^120363\d{10,20}$", clean_recipient))
+        is_legacy_group_id = bool(re.match(r"^\d{8,15}-\d{8,12}$", clean_recipient))
 
+        if not is_already_jid and not is_modern_group_id and not is_legacy_group_id:
+            try:
+                groups_data = fetch_whatsapp_groups_cached(channel_id)
                 matched = None
+                clean_lower = clean_recipient.lower()
+                clean_norm = re.sub(r"\s+", " ", clean_lower)
+
                 for g in groups_data:
-                    if g.get("subject", "").strip().lower() == clean_recipient.lower():
+                    subj = g.get("subject", "").strip().lower()
+                    if subj == clean_lower or re.sub(r"\s+", " ", subj) == clean_norm:
                         matched = g.get("id")
                         break
-                if not matched:
+
+                if not matched and re.search(r"[a-zA-Z]", clean_recipient):
                     for g in groups_data:
                         subj = g.get("subject", "").lower()
-                        if clean_recipient.lower() in subj or subj in clean_recipient.lower():
+                        if clean_lower in subj or subj in clean_lower:
                             matched = g.get("id")
                             break
+
                 if matched:
                     clean_recipient = matched
             except Exception as err:

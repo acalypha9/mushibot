@@ -9,6 +9,7 @@ import type {
   WaGroupItem,
 } from "../../types";
 import type { ReminderValidationInput, ReminderFormState, ReminderPayloadInput } from "./types";
+import { combinePhoneNumber } from "@/lib/countryCodes";
 
 export type { ReminderValidationInput, ReminderFormState, ReminderPayloadInput };
 
@@ -117,28 +118,135 @@ export function buildReminderScheduleMetadata(
 }
 
 export function buildReminderCustomMetadata(
-  state: ReminderPayloadInput, cleanRecipients: string[], cleanBlacklist: string[]
+  state: ReminderPayloadInput,
+  cleanRecipients: string[],
+  cleanBlacklist: string[],
+  groupSubjects?: Record<string, string>
 ): Record<string, unknown> {
   const isOnce = state.freqType === "once";
   const targetDate = state.targetDate.trim() || new Date().toISOString().split("T")[0];
   const parsedMaxRuns = isOnce ? 1 : Math.max(1, parseInt(state.maxRuns.trim(), 10) || 1);
   const { _variables, customVariables } = sanitizeReminderVariables(state.variables);
 
+  const recipientsMeta: Record<string, unknown> = {
+    mode: state.recipientMode,
+    allow_private: state.allowPrivate,
+    allow_group: state.allowGroup,
+    recipients: cleanRecipients,
+    blacklist: cleanBlacklist,
+  };
+
+  if (groupSubjects && Object.keys(groupSubjects).length > 0) {
+    recipientsMeta.group_subjects = groupSubjects;
+  }
+
   return {
-    is_recurring: !isOnce, _variables,
-    _recipients: {
-      mode: state.recipientMode, allow_private: state.allowPrivate, allow_group: state.allowGroup,
-      recipients: cleanRecipients, blacklist: cleanBlacklist,
-    },
+    is_recurring: !isOnce,
+    _variables,
+    _recipients: recipientsMeta,
     _schedule: buildReminderScheduleMetadata(state, isOnce, targetDate, parsedMaxRuns),
-    max_runs: parsedMaxRuns, ...customVariables,
+    max_runs: parsedMaxRuns,
+    ...customVariables,
   };
 }
 
-export function buildReminderPayload(state: ReminderPayloadInput, generatedCron: string) {
-  const cleanRecipients = state.recipientList.map((r) => r.trim()).filter(Boolean);
-  const cleanBlacklist = state.blacklistList.map((b) => b.trim()).filter(Boolean);
-  const customMeta = buildReminderCustomMetadata(state, cleanRecipients, cleanBlacklist);
+export function normalizeRecipientId(
+  input: string,
+  channelType: "WHATSAPP" | "TELEGRAM",
+  waGroups: WaGroupItem[] = [],
+  countryCode: string = ""
+): string {
+  const trimmed = typeof input === "string" ? input.trim() : "";
+  if (!trimmed) return "";
+
+  if (channelType === "WHATSAPP") {
+    const groups = Array.isArray(waGroups) ? waGroups : [];
+    const lower = trimmed.toLowerCase();
+    const cleanLower = lower.replace(/@g\.us$/, "");
+    const normalizedSearch = lower.replace(/\s+/g, " ");
+
+    const matchedGroup = groups.find((g) => {
+      if (!g) return false;
+      const gSubj = g.subject ? g.subject.trim().toLowerCase().replace(/\s+/g, " ") : "";
+      const gId = g.id ? g.id.toLowerCase() : "";
+      const gCleanId = gId.replace(/@g\.us$/, "");
+      return (
+        gSubj === normalizedSearch ||
+        gId === lower ||
+        gCleanId === cleanLower
+      );
+    });
+    if (matchedGroup?.id) {
+      return matchedGroup.id.endsWith("@g.us") ? matchedGroup.id : `${matchedGroup.id}@g.us`;
+    }
+
+    if (trimmed.endsWith("@g.us")) {
+      return trimmed;
+    }
+
+    const isModernGroup = /^120363\d{10,20}$/.test(trimmed);
+    const isLegacyGroup = /^\d{8,15}-\d{8,12}$/.test(trimmed);
+    if (isModernGroup || isLegacyGroup) {
+      return `${trimmed}@g.us`;
+    }
+
+    if (/[a-zA-Z]/.test(trimmed)) {
+      return trimmed;
+    }
+
+    const digitsOnly = trimmed.replace(/\D/g, "");
+    if (digitsOnly.length > 0) {
+      return combinePhoneNumber(trimmed, countryCode);
+    }
+
+    return trimmed;
+  }
+
+  return trimmed;
+}
+
+export const normalizeRecipientInput = normalizeRecipientId;
+
+export function buildReminderPayload(
+  state: ReminderPayloadInput,
+  generatedCron: string,
+  waGroups: WaGroupItem[] = []
+) {
+  const groups = Array.isArray(waGroups) ? waGroups : [];
+  const cleanRecipients = state.recipientList
+    .map((r) => normalizeRecipientId(r, state.channelType, groups))
+    .map((r) => r.trim())
+    .filter(Boolean);
+  const cleanBlacklist = state.blacklistList
+    .map((b) => normalizeRecipientId(b, state.channelType, groups))
+    .map((b) => b.trim())
+    .filter(Boolean);
+
+  const groupSubjects: Record<string, string> = { ...(state.groupSubjects || {}) };
+  for (const g of groups) {
+    if (!g?.id || !g?.subject) continue;
+    const canonicalJid = g.id.endsWith("@g.us") ? g.id : `${g.id}@g.us`;
+    const subjNorm = g.subject.trim().toLowerCase().replace(/\s+/g, " ");
+
+    const matchesRecipient =
+      cleanRecipients.includes(canonicalJid) ||
+      state.recipientList.some((r) => {
+        const rNorm = r.trim().toLowerCase().replace(/\s+/g, " ");
+        return rNorm === subjNorm || r.trim().toLowerCase() === g.id.toLowerCase();
+      });
+    const matchesBlacklist =
+      cleanBlacklist.includes(canonicalJid) ||
+      state.blacklistList.some((b) => {
+        const bNorm = b.trim().toLowerCase().replace(/\s+/g, " ");
+        return bNorm === subjNorm || b.trim().toLowerCase() === g.id.toLowerCase();
+      });
+
+    if (matchesRecipient || matchesBlacklist) {
+      groupSubjects[canonicalJid] = g.subject.trim();
+    }
+  }
+
+  const customMeta = buildReminderCustomMetadata(state, cleanRecipients, cleanBlacklist, groupSubjects);
   const targetRecipients = buildTargetRecipientsPayload(
     state.recipientMode, state.allowPrivate, state.allowGroup, cleanRecipients, cleanBlacklist
   );
@@ -178,6 +286,7 @@ export function hydrateReminderFormState(
 
   const recMeta = meta?._recipients as {
     mode?: string; allow_private?: boolean; allow_group?: boolean; recipients?: string[]; blacklist?: string[];
+    group_subjects?: Record<string, string>;
   } | undefined;
   const isAll = recMeta?.mode === "all" || rem.target_recipients === "ALL" || rem.target_recipients?.startsWith("ALL");
 
@@ -204,6 +313,7 @@ export function hydrateReminderFormState(
   const maxRunsVal = schedMeta?.max_runs ?? meta?.max_runs;
   const maxRuns = String(Math.max(1, parseInt(String(maxRunsVal || 1), 10) || 1));
   const parsedCron = parseCron ? parseCron(rem.cron_expression, rem.cmetadata) : null;
+  const groupSubjects = (recMeta?.group_subjects || (meta?.group_subjects as Record<string, string> | undefined)) || {};
 
   return {
     title: rem.title, variables, message: rem.message,
@@ -218,7 +328,7 @@ export function hydrateReminderFormState(
     maxInterval: parsedCron?.maxInterval || 60, intervalUnit: parsedCron?.intervalUnit || "minutes",
     useTimeWindow: Boolean(parsedCron?.useTimeWindow), windowStartTime: parsedCron?.windowStartTime || "08:00",
     windowEndTime: parsedCron?.windowEndTime || "20:00", timezone: rem.timezone || "Asia/Jakarta",
-    maxRuns, isActive: rem.is_active, formError: null,
+    maxRuns, isActive: rem.is_active, formError: null, groupSubjects,
   };
 }
 
@@ -232,18 +342,44 @@ export function getDefaultReminderFormState(availableChannels: ChannelOption[]):
     countryCode: "", freqType: "daily", timeMode: "exact", time: "", endTime: "17:00", days: [], minute: 0,
     intervalMinutes: 30, dayOfMonth: 1, minInterval: 15, maxInterval: 60, intervalUnit: "minutes",
     useTimeWindow: false, windowStartTime: "08:00", windowEndTime: "20:00", timezone: "Asia/Jakarta",
-    maxRuns: "1", isActive: true, formError: null,
+    maxRuns: "1", isActive: true, formError: null, groupSubjects: {},
   };
 }
 
-export function getRecipientDisplayInfo(recItem: string, waGroups: WaGroupItem[]) {
+export function getRecipientDisplayInfo(
+  recItem: string,
+  waGroups: WaGroupItem[] = [],
+  groupSubjects?: Record<string, string>
+) {
   const item = recItem.trim();
   if (!item) return { title: "", subtitle: null, isGroup: false };
-  const matched = waGroups.find(
-    (g) => g.id.toLowerCase() === item.toLowerCase() ||
-      g.id.replace(/@g\.us$/, "").toLowerCase() === item.replace(/@g\.us$/, "").toLowerCase()
-  );
+  const groups = Array.isArray(waGroups) ? waGroups : [];
+  const lower = item.toLowerCase();
+  const normalizedSearch = lower.replace(/\s+/g, " ");
+
+  const matched = groups.find((g) => {
+    if (!g) return false;
+    const gSubj = g.subject ? g.subject.trim().toLowerCase().replace(/\s+/g, " ") : "";
+    const gId = g.id ? g.id.toLowerCase() : "";
+    const gCleanId = gId.replace(/@g\.us$/, "");
+    return (
+      gSubj === normalizedSearch ||
+      gId === lower ||
+      gCleanId === lower.replace(/@g\.us$/, "")
+    );
+  });
   if (matched) return { title: matched.subject, subtitle: matched.id, isGroup: true };
+
+  if (groupSubjects) {
+    const canonicalJid = item.endsWith("@g.us") ? item : `${item}@g.us`;
+    if (groupSubjects[item]) {
+      return { title: groupSubjects[item], subtitle: canonicalJid, isGroup: true };
+    }
+    if (groupSubjects[canonicalJid]) {
+      return { title: groupSubjects[canonicalJid], subtitle: canonicalJid, isGroup: true };
+    }
+  }
+
   if (item.includes("@g.us") || item.startsWith("120363") || /^\d{15,25}$/.test(item.replace(/[^\d]/g, ""))) {
     return { title: "WhatsApp Group", subtitle: item.endsWith("@g.us") ? item : `${item}@g.us`, isGroup: true };
   }

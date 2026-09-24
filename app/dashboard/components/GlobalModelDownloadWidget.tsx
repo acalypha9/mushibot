@@ -57,29 +57,54 @@ export default function GlobalModelDownloadWidget() {
       if (!res.ok) return;
       const data = await res.json();
       if (data && Array.isArray(data.downloads)) {
-        // Look for active download
-        const running = data.downloads.find(
-          (d: DownloadProgressInfo) => d.status === "downloading" || d.status === "starting"
-        );
-
-        if (running) {
-          if (running.model_id !== dismissedModelId) {
-            setActiveDownload(running);
-          }
-        } else if (activeDownload && (activeDownload.status === "downloading" || activeDownload.status === "starting")) {
-          // Check if previous active download is now completed
-          const finished = data.downloads.find(
+        if (activeDownload) {
+          const match = data.downloads.find(
             (d: DownloadProgressInfo) => d.model_id === activeDownload.model_id
           );
-          if (finished) {
-            setActiveDownload(finished);
-            if (finished.status === "completed") {
+          if (match) {
+            setActiveDownload(match);
+            if (match.status === "completed") {
               window.dispatchEvent(
                 new CustomEvent("model-download-complete", {
-                  detail: { model_id: finished.model_id }
+                  detail: { model_id: match.model_id }
                 })
               );
             }
+          } else {
+            // Task not present in downloads list, query direct status
+            try {
+              const checkRes = await fetch(
+                `/api/providers/download-progress?model_id=${encodeURIComponent(activeDownload.model_id)}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              if (checkRes.ok) {
+                const singleData: DownloadProgressInfo = await checkRes.json();
+                if (singleData.status === "completed" || singleData.status === "error") {
+                  setActiveDownload(singleData);
+                  if (singleData.status === "completed") {
+                    window.dispatchEvent(
+                      new CustomEvent("model-download-complete", {
+                        detail: { model_id: singleData.model_id }
+                      })
+                    );
+                  }
+                } else if (singleData.status === "not_found") {
+                  setActiveDownload(null);
+                }
+              } else {
+                setActiveDownload(null);
+              }
+            } catch {
+              setActiveDownload(null);
+            }
+          }
+        } else {
+          // Initial check: look for any currently running download
+          const running = data.downloads.find(
+            (d: DownloadProgressInfo) => d.status === "downloading" || d.status === "starting"
+          );
+          if (running && running.model_id !== dismissedModelId) {
+            setActiveDownload(running);
           }
         }
       }
@@ -88,45 +113,76 @@ export default function GlobalModelDownloadWidget() {
     }
   };
 
-  // Poll loop: active = 600ms, idle = 3000ms
+  // Check once on initial mount or token change to see if a download is already in progress
+  useEffect(() => {
+    if (!token) return;
+    fetchProgress();
+  }, [token]);
+
+  // Active polling: ONLY runs when activeDownload is in progress ("starting" or "downloading")
+  // Poll interval is 2000ms
   useEffect(() => {
     if (!token) return;
 
-    fetchProgress();
+    const isRunning =
+      activeDownload &&
+      (activeDownload.status === "downloading" || activeDownload.status === "starting");
 
-    const intervalMs = activeDownload && (activeDownload.status === "downloading" || activeDownload.status === "starting")
-      ? 600
-      : 3000;
+    if (!isRunning) {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+      return;
+    }
 
-    pollTimerRef.current = setInterval(fetchProgress, intervalMs);
+    pollTimerRef.current = setInterval(fetchProgress, 2000);
 
     return () => {
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
     };
-  }, [token, activeDownload?.status]);
+  }, [token, activeDownload?.status, activeDownload?.model_id]);
 
-  // Listen for local trigger event when a download starts in the UI
+  // Listen for local trigger event when a download starts in the UI + cross-tab sync
   useEffect(() => {
     const handleStarted = (e: Event) => {
       const customEvent = e as CustomEvent<{ model_id: string }>;
       setDismissedModelId(null);
       setIsMinimized(false);
       if (customEvent.detail?.model_id) {
+        const startedModelId = customEvent.detail.model_id;
         setActiveDownload({
-          model_id: customEvent.detail.model_id,
+          model_id: startedModelId,
           status: "starting",
           progress: 0,
           downloaded_bytes: 0,
           total_bytes: 0,
           message: "Starting download..."
         });
+        try {
+          localStorage.setItem(
+            "csa_active_model_download",
+            JSON.stringify({ model_id: startedModelId, ts: Date.now() })
+          );
+        } catch {}
       }
       fetchProgress();
     };
 
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "csa_active_model_download" && e.newValue) {
+        fetchProgress();
+      }
+    };
+
     window.addEventListener("model-download-started", handleStarted);
+    window.addEventListener("storage", handleStorage);
     return () => {
       window.removeEventListener("model-download-started", handleStarted);
+      window.removeEventListener("storage", handleStorage);
     };
   }, [token]);
 

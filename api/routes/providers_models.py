@@ -65,6 +65,7 @@ class DownloadTask:
         self.error: Optional[str] = None
         self.start_time = time.time()
         self.last_update_time = time.time()
+        self.completed_at: Optional[float] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -177,12 +178,14 @@ def _run_download_task(task: DownloadTask, model_id: str):
 
         task.status = "completed"
         task.progress = 100.0
+        task.completed_at = time.time()
         if task.total_bytes > 0:
             task.downloaded_bytes = task.total_bytes
         task.message = f"Downloaded {model_id} successfully"
     except Exception as err:
         task.status = "error"
         task.error = str(err)
+        task.completed_at = time.time()
         task.message = f"Failed to download {model_id}: {str(err)}"
 
 
@@ -418,6 +421,15 @@ async def get_download_progress(
             "message": "No active download task"
         }
 
+    now = time.time()
     with _tasks_lock:
+        # Prune tasks completed/errored more than 10 minutes ago
+        expired = [
+            m_id for m_id, t in active_download_tasks.items()
+            if t.completed_at and (now - t.completed_at > 600)
+        ]
+        for m_id in expired:
+            active_download_tasks.pop(m_id, None)
+
         all_tasks = [t.to_dict() for t in active_download_tasks.values()]
     return {"downloads": all_tasks}

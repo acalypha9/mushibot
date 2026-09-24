@@ -127,7 +127,7 @@ def edit_reminder(
             rem.channel_type = channel_type.strip().upper()
 
         if recipient and recipient.strip():
-            rem.target_recipients = resolve_reminder_recipient(recipient, rem.channel_type)
+            rem.target_recipients = resolve_reminder_recipient(recipient, rem.channel_type, getattr(rem, "channel_id", None))
 
         custom_meta = dict(rem.cmetadata) if isinstance(rem.cmetadata, dict) else {}
         if time and time.strip():

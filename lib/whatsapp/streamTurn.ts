@@ -51,11 +51,13 @@ export async function processAiResponseTurn(params: {
 
     const effectiveSystemPrompt = store.systemPrompt || currentChannelConfig?.systemPrompt || undefined;
     const effectiveModel = store.model || currentChannelConfig?.model || undefined;
+    const effectiveChannelId = currentChannelConfig?.id || store.sessionId;
 
     const res = await forwardToChatbotStream(
       {
         message: promptMessageText,
         senderIdForApi,
+        channel_id: effectiveChannelId,
         remoteJid: targetJid,
         pushName,
         participantPhone,

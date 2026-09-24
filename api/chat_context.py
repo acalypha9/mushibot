@@ -58,6 +58,7 @@ SYSTEM_PROMPT = f"{DEFAULT_PERSONA}\n\nCurrent Time: {get_current_time_str()}\n\
 _tool_map = {t.name: t for t in all_tools}
 
 current_chat_recipient_var: ContextVar[Optional[str]] = ContextVar("current_chat_recipient_var", default=None)
+current_chat_channel_id_var: ContextVar[Optional[str]] = ContextVar("current_chat_channel_id_var", default=None)
 
 
 def get_enabled_tools(db: Session) -> list:

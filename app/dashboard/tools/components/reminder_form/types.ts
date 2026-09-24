@@ -56,6 +56,7 @@ export interface ReminderPayloadInput {
   targetDate: string;
   maxRuns: string;
   variables: ReminderVariableItem[];
+  groupSubjects?: Record<string, string>;
 }
 
 export interface ReminderFormState extends ReminderPayloadInput {

@@ -36,6 +36,8 @@ export interface ChannelOption {
   type: "WHATSAPP" | "TELEGRAM";
   boundPhone?: string;
   autoReplyEnabled?: boolean;
+  platform?: string;
+  status?: string;
 }
 
 export interface FunctionToolItem {

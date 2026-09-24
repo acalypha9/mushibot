@@ -109,6 +109,7 @@ export default function ReminderFormModal(props: ReminderFormModalProps) {
           blacklistSlot={
             <BlacklistConfig
               channelType={form.reminderChannelTypeInput}
+              channelId={form.reminderChannelIdInput}
               blacklistList={form.reminderBlacklistList}
               setBlacklistList={form.setReminderBlacklistList}
               editingIdx={form.editingBlacklistIdx}

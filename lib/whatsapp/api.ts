@@ -1,6 +1,7 @@
 export interface ForwardChannelQueryParams {
   message: string;
   senderIdForApi: string;
+  channel_id?: string | null;
   remoteJid?: string | null;
   pushName?: string;
   participantPhone?: string;
@@ -18,6 +19,7 @@ export async function forwardToChatbotStream(
   const {
     message,
     senderIdForApi,
+    channel_id,
     remoteJid,
     pushName,
     participantPhone,
@@ -43,6 +45,7 @@ export async function forwardToChatbotStream(
     body: JSON.stringify({
       message,
       channel: "WHATSAPP",
+      channel_id: channel_id || undefined,
       sender_id: senderIdForApi,
       remote_jid: remoteJid || undefined,
       push_name: pushName || (isGroup ? "WhatsApp Group Member" : undefined),

@@ -9,10 +9,11 @@ export interface GroupPickerPopoverProps {
   groupPickerRef: React.RefObject<HTMLDivElement | null>;
   showGroupPicker: boolean;
   setShowGroupPicker: (val: boolean) => void;
-  fetchWaGroups: (force?: boolean) => Promise<void>;
+  fetchWaGroups: (channelIdOrForce?: string | boolean, force?: boolean) => Promise<void>;
   loadingWaGroups: boolean;
   waGroups: WaGroupItem[];
   onSelectGroup: (groupId: string) => void;
+  channelId?: string;
 }
 
 export function GroupPickerPopover({
@@ -23,6 +24,7 @@ export function GroupPickerPopover({
   loadingWaGroups,
   waGroups,
   onSelectGroup,
+  channelId,
 }: GroupPickerPopoverProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -49,7 +51,7 @@ export function GroupPickerPopover({
         variant="outline"
         size="sm"
         onClick={() => {
-          if (!showGroupPicker) void fetchWaGroups(true);
+          if (!showGroupPicker) void fetchWaGroups(channelId, true);
           setShowGroupPicker(!showGroupPicker);
         }}
         style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}
@@ -100,7 +102,7 @@ export function GroupPickerPopover({
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  void fetchWaGroups(true);
+                  void fetchWaGroups(channelId, true);
                 }}
                 disabled={loadingWaGroups}
                 title="Fetch latest groups from WhatsApp"

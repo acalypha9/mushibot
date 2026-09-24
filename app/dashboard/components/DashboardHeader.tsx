@@ -283,7 +283,11 @@ export default function DashboardHeader({
               width={26}
               height={26}
               priority
-              style={{ objectFit: "contain", borderRadius: "4px" }}
+              style={{
+                objectFit: "contain",
+                borderRadius: "6px",
+                backgroundColor: "#ffffff",
+              }}
             />
             <span>Mushibot</span>
           </Link>

@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import sys
@@ -141,6 +142,7 @@ async def build_effective_system_prompt(
     channel: Optional[str],
     current_recipient: Optional[str],
     enabled_tools: list,
+    channel_id: Optional[str] = None,
 ) -> str:
     persona = system_prompt.strip() if (system_prompt and system_prompt.strip()) else DEFAULT_PERSONA
     rules = SYSTEM_RULES
@@ -158,20 +160,26 @@ async def build_effective_system_prompt(
             print(f"[WARN] Failed to fetch collections for system prompt: {err}", file=sys.stderr, flush=True)
 
     wa_groups_prompt = ""
-    try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
-            resp = await client.get(f"{NEXTJS_URL}/api/channel/whatsapp?action=groups")
-            if resp.status_code == 200:
-                raw_groups = resp.json().get("groups", [])
-                if raw_groups:
-                    formatted_groups = [{"name": g.get("subject"), "id": g.get("id")} for g in raw_groups]
+    if channel and str(channel).upper() == "WHATSAPP":
+        try:
+            from reminder_service import fetch_whatsapp_groups_cached
+
+            active_chan = (channel_id or "default").strip()
+            raw_groups = await asyncio.to_thread(fetch_whatsapp_groups_cached, active_chan)
+            if raw_groups:
+                valid_groups = [
+                    {"name": str(g.get("subject")).strip(), "id": str(g.get("id")).strip()}
+                    for g in raw_groups
+                    if g.get("id") and str(g.get("id")).strip().endswith("@g.us") and g.get("subject")
+                ]
+                if valid_groups:
                     wa_groups_prompt = (
-                        f"\n\nAvailable WhatsApp Groups:\n"
-                        f"```json\n{json.dumps(formatted_groups, ensure_ascii=False, indent=2)}\n```\n"
-                        "When targeting a WhatsApp group by name, use its corresponding 'id' as the recipient."
+                        f"\n\nAvailable WhatsApp Groups (Name -> JID):\n"
+                        f"```json\n{json.dumps(valid_groups, ensure_ascii=False, indent=2)}\n```\n"
+                        "CRITICAL INSTRUCTION FOR REMINDERS & MESSAGES: When creating, setting, or scheduling a reminder for a specific WhatsApp group, you MUST provide the group's exact canonical '@g.us' JID (from the 'id' field above, e.g. '120363xxx@g.us') as the recipient parameter. NEVER pass a raw group name as the recipient to reminder tools."
                     )
-    except Exception as err:
-        print(f"[WARN] Failed to fetch WhatsApp groups for system prompt: {err}", file=sys.stderr, flush=True)
+        except Exception as err:
+            print(f"[WARN] Failed to fetch WhatsApp groups for system prompt: {err}", file=sys.stderr, flush=True)
 
     recipient_prompt = ""
     if current_recipient and str(current_recipient).strip():

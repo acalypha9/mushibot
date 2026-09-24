@@ -2,7 +2,7 @@ import asyncio
 import sys
 from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
 
-from chat_context import current_chat_recipient_var, get_enabled_tools
+from chat_context import current_chat_channel_id_var, current_chat_recipient_var, get_enabled_tools
 from chat_messages import (
     _log_raw_request,
     _log_raw_response,
@@ -162,8 +162,10 @@ async def run_chat(
     system_prompt: Optional[str] = None,
     channel: Optional[str] = "WEB",
     current_recipient: Optional[str] = None,
+    channel_id: Optional[str] = None,
 ) -> AsyncGenerator[dict, None]:
     current_chat_recipient_var.set(current_recipient)
+    current_chat_channel_id_var.set(channel_id or "default")
     enabled_tools = _resolve_enabled_tools(db)
     enabled_tool_names = {t.name for t in enabled_tools}
 
@@ -189,7 +191,13 @@ async def run_chat(
                 yield {"done": True}
                 return
 
-    effective_system_prompt = await build_effective_system_prompt(system_prompt, channel, current_recipient, enabled_tools)
+    effective_system_prompt = await build_effective_system_prompt(
+        system_prompt,
+        channel,
+        current_recipient,
+        enabled_tools,
+        channel_id=channel_id or "default",
+    )
     messages = prepare_chat_messages(history, max_history_messages, effective_system_prompt)
 
     turn = 1

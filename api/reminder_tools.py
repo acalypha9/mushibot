@@ -56,8 +56,15 @@ def set_reminder(
     tz_name = "Asia/Jakarta"
     parsed = _parse_natural_schedule(time, is_recurring=bool(is_recurring), tz_name=tz_name, message_limit=message_limit)
 
+    active_channel_id = "default"
+    try:
+        from chat_context import current_chat_channel_id_var
+        active_channel_id = current_chat_channel_id_var.get() or "default"
+    except Exception:
+        pass
+
     clean_channel = (channel_type or "WHATSAPP").upper()
-    clean_recipient = resolve_reminder_recipient(recipient, clean_channel)
+    clean_recipient = resolve_reminder_recipient(recipient, clean_channel, channel_id=active_channel_id)
     clean_msg, vars_list = normalize_reminder_variables(clean_msg, variables=variables)
 
     custom_meta = {k: v for k, v in dict(parsed.get("cmetadata", {})).items() if k not in ("title",)}
@@ -78,7 +85,7 @@ def set_reminder(
             cron_expression=parsed["cron_expression"],
             timezone=tz_name,
             channel_type=clean_channel,
-            channel_id="default",
+            channel_id=active_channel_id,
             target_recipients=clean_recipient,
             is_active=True,
             next_run_at=parsed["next_run_at"],

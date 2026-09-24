@@ -14,6 +14,8 @@ services:
       - INTERNAL_API_KEY=${INTERNAL_API_KEY:?Set INTERNAL_API_KEY}
       - RUNNING_IN_DOCKER=true
       - TZ=${TZ:-Asia/Jakarta}
+      - LOG_RAW_MESSAGE_IO=${LOG_RAW_MESSAGE_IO:-false}
+      - LOG_RAW_MODEL_IO=${LOG_RAW_MODEL_IO:-false}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -43,6 +45,9 @@ services:
       - LLAMA_CLOUD_API_KEY=${LLAMA_CLOUD_API_KEY:-}
       - DIGITAL_OCEAN_API_KEY=${DIGITAL_OCEAN_API_KEY:-}
       - TZ=${TZ:-Asia/Jakarta}
+      - LOG_RAW_MODEL_IO=${LOG_RAW_MODEL_IO:-false}
+      - LOG_RAW_MESSAGE_IO=${LOG_RAW_MESSAGE_IO:-false}
+      - ENABLE_SHELL_TOOL=${ENABLE_SHELL_TOOL:-false}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -50,6 +55,12 @@ services:
     volumes:
       - api_uploads:/app/uploads
       - api_cache:/app/.cache
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2)"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
     depends_on:
       db:
         condition: service_healthy

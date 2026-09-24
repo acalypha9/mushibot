@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 import urllib.error
 import urllib.request
 import zoneinfo
@@ -30,10 +31,15 @@ def _sync_deliver_reminder(
 
     try:
         if channel_type == "WHATSAPP":
+            if not recipients:
+                result["success"] = False
+                result["detail"] = "No valid WhatsApp recipients provided."
+                return result
+
             payload = {
                 "channel_id": channel_id,
                 "action": "broadcast",
-                "recipients": recipients if recipients else ["default"],
+                "recipients": recipients,
                 "blacklist": blacklist or [],
                 "allowPrivate": allow_private,
                 "allowGroup": allow_group,
@@ -58,7 +64,7 @@ def _sync_deliver_reminder(
             payload = {
                 "channel_id": channel_id,
                 "action": "broadcast",
-                "recipients": recipients if recipients else ["default"],
+                "recipients": recipients,
                 "blacklist": blacklist or [],
                 "allowPrivate": allow_private,
                 "allowGroup": allow_group,
@@ -221,11 +227,15 @@ async def execute_reminder_delivery(reminder: CronReminder) -> Dict[str, Any]:
     channel_id = reminder.channel_id or "default"
     raw_recipients = reminder.target_recipients or ""
 
-    meta_rec = meta.get("_recipients", {}) if isinstance(meta, dict) else {}
-    rec_mode = meta_rec.get("mode") if isinstance(meta_rec, dict) else None
-    blacklist = meta_rec.get("blacklist", []) if isinstance(meta_rec, dict) else []
-    allow_private = meta_rec.get("allow_private", True) if isinstance(meta_rec, dict) else True
-    allow_group = meta_rec.get("allow_group", True) if isinstance(meta_rec, dict) else True
+    meta_rec_raw = meta.get("_recipients") if isinstance(meta, dict) else None
+    meta_rec = meta_rec_raw if isinstance(meta_rec_raw, dict) else {}
+    rec_mode = meta_rec.get("mode")
+    blacklist_raw = meta_rec.get("blacklist")
+    blacklist = blacklist_raw if isinstance(blacklist_raw, list) else []
+    allow_private_raw = meta_rec.get("allow_private")
+    allow_private = allow_private_raw if isinstance(allow_private_raw, bool) else True
+    allow_group_raw = meta_rec.get("allow_group")
+    allow_group = allow_group_raw if isinstance(allow_group_raw, bool) else True
 
     if raw_recipients.startswith("ALL"):
         if "Private only" in raw_recipients:
@@ -244,29 +254,65 @@ async def execute_reminder_delivery(reminder: CronReminder) -> Dict[str, Any]:
             if r.strip()
         ]
         if channel_type == "WHATSAPP":
-            import re
+            raw_meta_subjects = meta_rec.get("group_subjects")
+            raw_top_subjects = meta.get("group_subjects") if isinstance(meta, dict) else None
+            chosen_subjects = raw_meta_subjects if isinstance(raw_meta_subjects, dict) else (
+                raw_top_subjects if isinstance(raw_top_subjects, dict) else {}
+            )
+            group_subjects = chosen_subjects if isinstance(chosen_subjects, dict) else {}
+
             normalized_recipients = []
             for r_item in raw_list:
                 if r_item == "ALL":
                     normalized_recipients.append("ALL")
                 elif r_item.endswith("@g.us") or r_item.endswith("@lid"):
                     normalized_recipients.append(r_item)
-                elif r_item.startswith("120363"):
+                elif (r_item.startswith("120363") and len(r_item) >= 16) or bool(re.match(r"^\d{8,15}-\d{8,12}$", r_item)):
                     normalized_recipients.append(f"{r_item}@g.us")
                 elif r_item.endswith("@s.whatsapp.net"):
                     c_dig = re.sub(r"\D", "", r_item.split("@")[0])
                     if c_dig.startswith("08") and len(c_dig) >= 9:
                         c_dig = "62" + c_dig[1:]
-                    normalized_recipients.append(f"{c_dig}@s.whatsapp.net" if c_dig else r_item)
-                else:
-                    c_dig = re.sub(r"\D", "", r_item)
-                    if c_dig.startswith("08") and len(c_dig) >= 9:
-                        c_dig = "62" + c_dig[1:]
                     if len(c_dig) >= 7:
                         normalized_recipients.append(f"{c_dig}@s.whatsapp.net")
+                else:
+                    resolved_jid = None
+                    if isinstance(group_subjects, dict):
+                        for jid, subj in group_subjects.items():
+                            if isinstance(subj, str) and subj.strip().lower() == r_item.lower():
+                                resolved_jid = str(jid).strip()
+                                break
+                    if not resolved_jid and re.search(r"[a-zA-Z]", r_item):
+                        from reminder_service import resolve_reminder_recipient
+                        candidate = resolve_reminder_recipient(r_item, "WHATSAPP", channel_id=channel_id)
+                        if candidate:
+                            if candidate.endswith("@g.us") or candidate.endswith("@s.whatsapp.net") or candidate.endswith("@lid"):
+                                resolved_jid = candidate
+                            elif (candidate.startswith("120363") and len(candidate) >= 16) or bool(re.match(r"^\d{8,15}-\d{8,12}$", candidate)):
+                                resolved_jid = f"{candidate}@g.us"
+
+                    if resolved_jid:
+                        if not resolved_jid.endswith("@g.us") and ((resolved_jid.startswith("120363") and len(resolved_jid) >= 16) or bool(re.match(r"^\d{8,15}-\d{8,12}$", resolved_jid))):
+                            resolved_jid = f"{resolved_jid}@g.us"
+                        if resolved_jid.endswith("@g.us") or resolved_jid.endswith("@s.whatsapp.net") or resolved_jid.endswith("@lid"):
+                            normalized_recipients.append(resolved_jid)
+                    elif re.search(r"[a-zA-Z]", r_item):
+                        pass
                     else:
-                        normalized_recipients.append(r_item)
+                        c_dig = re.sub(r"\D", "", r_item)
+                        if c_dig.startswith("08") and len(c_dig) >= 9:
+                            c_dig = "62" + c_dig[1:]
+                        if len(c_dig) >= 7:
+                            normalized_recipients.append(f"{c_dig}@s.whatsapp.net")
             recipients = normalized_recipients
+            if not recipients:
+                return {
+                    "channel": channel_type,
+                    "channel_id": channel_id,
+                    "recipients_count": 0,
+                    "success": False,
+                    "detail": "No valid WhatsApp recipients found for reminder delivery.",
+                }
         else:
             recipients = raw_list
 

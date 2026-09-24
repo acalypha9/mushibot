@@ -23,7 +23,7 @@ export function getMcpServerDeleteEndpoint(serverId: string) {
 
 export function getRemindersChannelsEndpoint() {
   return {
-    url: "/api/reminders/channels",
+    url: "/api/channel/list",
     method: "GET" as const,
   };
 }
@@ -54,12 +54,33 @@ export function unpackChannelsResponse(data: unknown): ChannelOption[] {
     const obj = (item || {}) as Record<string, unknown>;
     const rawType = String(obj.type || obj.channel_type || obj.platform || "WHATSAPP").toUpperCase();
     const typeVal: "WHATSAPP" | "TELEGRAM" = rawType === "TELEGRAM" ? "TELEGRAM" : "WHATSAPP";
+
+    const rawBoundPhone = obj.boundPhone !== undefined ? obj.boundPhone : obj.bound_phone;
+    const boundPhone =
+      typeof rawBoundPhone === "string"
+        ? rawBoundPhone
+        : typeof rawBoundPhone === "number"
+        ? String(rawBoundPhone)
+        : undefined;
+
+    const rawAutoReply = obj.autoReplyEnabled !== undefined ? obj.autoReplyEnabled : obj.auto_reply_enabled;
+    const autoReplyEnabled =
+      typeof rawAutoReply === "boolean"
+        ? rawAutoReply
+        : rawAutoReply === "true"
+        ? true
+        : rawAutoReply === "false"
+        ? false
+        : undefined;
+
     return {
       id: String(obj.id || "default"),
       name: String(obj.name || obj.channel_name || obj.id || "Channel"),
       type: typeVal,
       platform: String(obj.platform || typeVal),
       status: typeof obj.status === "string" ? obj.status : undefined,
+      ...(boundPhone !== undefined ? { boundPhone } : {}),
+      ...(autoReplyEnabled !== undefined ? { autoReplyEnabled } : {}),
     };
   });
 }

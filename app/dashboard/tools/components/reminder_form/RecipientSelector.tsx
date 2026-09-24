@@ -25,7 +25,7 @@ export interface RecipientSelectorProps {
   groupPickerRef: React.RefObject<HTMLDivElement | null>;
   showGroupPicker: boolean;
   setShowGroupPicker: (val: boolean) => void;
-  fetchWaGroups: (force?: boolean) => Promise<void>;
+  fetchWaGroups: (channelIdOrForce?: string | boolean, force?: boolean) => Promise<void>;
   loadingWaGroups: boolean;
   waGroups: WaGroupItem[];
   reminderRecipientList: string[];
@@ -82,7 +82,11 @@ export function RecipientSelector(props: RecipientSelectorProps) {
               const newType = e.target.value as "WHATSAPP" | "TELEGRAM";
               setReminderChannelTypeInput(newType);
               const matching = availableChannels.filter((c) => c.type === newType);
-              setReminderChannelIdInput(matching.length > 0 ? matching[0].id : "default");
+              const nextId = matching.length > 0 ? matching[0].id : "default";
+              setReminderChannelIdInput(nextId);
+              if (newType === "WHATSAPP") {
+                void fetchWaGroups(nextId);
+              }
             }}
           >
             <option value="WHATSAPP">WhatsApp</option>
@@ -92,7 +96,16 @@ export function RecipientSelector(props: RecipientSelectorProps) {
 
         <div>
           <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#605e5c", marginBottom: "4px" }}>Channel Account / Session</label>
-          <Select value={reminderChannelIdInput} onChange={(e) => setReminderChannelIdInput(e.target.value)}>
+          <Select
+            value={reminderChannelIdInput}
+            onChange={(e) => {
+              const nextId = e.target.value;
+              setReminderChannelIdInput(nextId);
+              if (reminderChannelTypeInput === "WHATSAPP") {
+                void fetchWaGroups(nextId);
+              }
+            }}
+          >
             {availableChannels.filter((c) => c.type === reminderChannelTypeInput).length > 0 ? (
               availableChannels.filter((c) => c.type === reminderChannelTypeInput).map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
@@ -154,6 +167,7 @@ export function RecipientSelector(props: RecipientSelectorProps) {
                     loadingWaGroups={loadingWaGroups}
                     waGroups={waGroups}
                     onSelectGroup={handleSelectGroup}
+                    channelId={reminderChannelIdInput}
                   />
                 )}
                 <Button
@@ -199,6 +213,7 @@ export function RecipientSelector(props: RecipientSelectorProps) {
             countryCode={reminderCountryCode}
             setCountryCode={setReminderCountryCode}
             getDisplayInfo={getRecipientDisplayInfo}
+            waGroups={waGroups}
           />
         )}
       </div>

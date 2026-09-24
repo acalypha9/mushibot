@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 
 export type BackendStatus = "checking" | "online" | "offline";
 
-export function useBackendHealth(intervalMs = 8_000): BackendStatus {
+export function useBackendHealth(intervalMs = 30_000): BackendStatus {
   const [status, setStatus] = useState<BackendStatus>("offline"); // start offline until confirmed
 
   const check = useCallback(async () => {

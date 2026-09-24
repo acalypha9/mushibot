@@ -338,6 +338,7 @@ class DocumentResponse(BaseModel):
 class ChannelQueryRequest(BaseModel):
     message: str
     channel: str = "WHATSAPP"
+    channel_id: Optional[str] = None
     sender_id: Optional[str] = None
     remote_jid: Optional[str] = None
     push_name: Optional[str] = None

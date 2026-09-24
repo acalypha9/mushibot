@@ -9,8 +9,8 @@ import {
   CountryCodePicker,
   splitPhoneNumber,
   extractCountryCodeFromInput,
-  combinePhoneNumber,
 } from "@/lib/countryCodes";
+import { normalizeRecipientId } from "./reminderFormLogic";
 
 export interface BlacklistConfigProps {
   channelType: "WHATSAPP" | "TELEGRAM";
@@ -23,21 +23,22 @@ export interface BlacklistConfigProps {
   blGroupPickerRef: React.RefObject<HTMLDivElement | null>;
   showBlGroupPicker: boolean;
   setShowBlGroupPicker: (val: boolean) => void;
-  fetchWaGroups: (force?: boolean) => Promise<void>;
+  fetchWaGroups: (channelIdOrForce?: string | boolean, force?: boolean) => Promise<void>;
   waGroups: WaGroupItem[];
   getDisplayInfo: (item: string) => { title: string; subtitle: string | null; isGroup: boolean };
+  channelId?: string;
 }
 
 export function BlacklistConfig({
   channelType, blacklistList, setBlacklistList,
   editingIdx, setEditingIdx, countryCode, setCountryCode,
   blGroupPickerRef, showBlGroupPicker, setShowBlGroupPicker,
-  fetchWaGroups, waGroups, getDisplayInfo,
+  fetchWaGroups, waGroups, getDisplayInfo, channelId,
 }: BlacklistConfigProps) {
   const commit = () => {
     if (editingIdx === null) return;
     const raw = blacklistList[editingIdx] || "";
-    const formatted = combinePhoneNumber(raw, countryCode);
+    const formatted = normalizeRecipientId(raw, channelType, waGroups, countryCode);
     if (formatted.trim()) {
       setBlacklistList((prev) => {
         const next = [...prev];
@@ -63,7 +64,7 @@ export function BlacklistConfig({
             <div ref={blGroupPickerRef} style={{ position: "relative" }}>
               <Button
                 type="button" variant="outline" size="sm"
-                onClick={() => { if (!showBlGroupPicker) void fetchWaGroups(true); setShowBlGroupPicker(!showBlGroupPicker); }}
+                onClick={() => { if (!showBlGroupPicker) void fetchWaGroups(channelId, true); setShowBlGroupPicker(!showBlGroupPicker); }}
                 style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}
                 title="Select from your WhatsApp Groups to exclude"
               >

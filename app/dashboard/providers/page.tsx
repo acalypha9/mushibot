@@ -583,7 +583,7 @@ export default function ProvidersPage() {
         return;
       }
 
-      // Poll progress every 600ms
+      // Poll progress every 2000ms
       const pollInterval = setInterval(async () => {
         try {
           const pollRes = await fetch(
@@ -610,11 +610,14 @@ export default function ProvidersPage() {
             clearInterval(pollInterval);
             setError(pollData.error || pollData.message || `Failed to download model ${modelId}`);
             setDownloadingModelId((current) => (current === modelId ? null : current));
+          } else if (pollData.status === "not_found") {
+            clearInterval(pollInterval);
+            setDownloadingModelId((current) => (current === modelId ? null : current));
           }
         } catch {
           // ignore transient poll errors
         }
-      }, 600);
+      }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to download model");
       setDownloadingModelId(null);

@@ -194,10 +194,12 @@ export default function FunctionToolsPage() {
             triggeringReminderId={rem.triggeringReminderId}
             fetchReminders={rem.fetchReminders}
             onOpenAddModal={() => {
+              rem.fetchChannels();
               rem.setEditingReminder(null);
               rem.setShowReminderModal(true);
             }}
             onOpenEditModal={(r) => {
+              rem.fetchChannels();
               rem.setEditingReminder(r);
               rem.setShowReminderModal(true);
             }}
