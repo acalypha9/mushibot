@@ -203,7 +203,7 @@ export function ChatWindow({
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+    <div className="chat-window" style={{ display: "flex", flexDirection: "column", height: "100%", minWidth: 0, width: "100%", overflow: "hidden" }}>
       <ChatHeader
         conversationId={conversationId}
         status={status}
@@ -227,6 +227,12 @@ export function ChatWindow({
         onSendMessage={sendPromptToLLM}
         onStopStreaming={handleStopStreaming}
       />
+      <style jsx>{`
+        .chat-window > :global(*) {
+          min-width: 0;
+          max-width: 100%;
+        }
+      `}</style>
     </div>
   );
 }

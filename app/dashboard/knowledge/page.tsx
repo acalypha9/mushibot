@@ -8,6 +8,7 @@ import { useKnowledgeState } from "./useKnowledgeState";
 import { useKnowledgeBinding } from "./useKnowledgeBinding";
 import KnowledgeMainView from "./components/KnowledgeMainView";
 import KnowledgeModals from "./components/KnowledgeModals";
+import styles from "./knowledge.module.css";
 
 function KnowledgeContent() {
   const { token, user } = useAuth();
@@ -78,16 +79,16 @@ function KnowledgeContent() {
 
   return (
     <div
+      className={styles.page}
       style={{
         minHeight: "100%",
         backgroundColor: "#faf9f8",
-        padding: "28px 40px 60px 40px",
         boxSizing: "border-box",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         color: "#323130",
       }}
     >
-      <div style={{ maxWidth: "1280px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "20px" }}>
+      <div className={styles.content}>
         {errorMsg && (
           <div
             style={{

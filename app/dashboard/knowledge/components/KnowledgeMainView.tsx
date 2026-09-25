@@ -4,6 +4,7 @@ import KnowledgeHeader from "./KnowledgeHeader";
 import KnowledgeTabs from "./KnowledgeTabs";
 import KnowledgeContentPanels from "./KnowledgeContentPanels";
 import { Collection, KBSettings, DocumentItem, ChunkItem, RetrievalItem } from "../types";
+import styles from "../knowledge.module.css";
 
 interface KnowledgeMainViewProps {
   selectedCol: Collection | null;
@@ -116,7 +117,7 @@ export default function KnowledgeMainView(props: KnowledgeMainViewProps) {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+    <div className={styles.collectionPage}>
       <KnowledgeHeader
         selectedCol={props.selectedCol}
         onBackToCollections={props.onBackToCollections}

@@ -706,6 +706,7 @@ export default function ProvidersPage() {
 
   return (
     <div
+      className="dashboard-responsive-page"
       style={{
         minHeight: "100%",
         backgroundColor: "var(--background)",
@@ -715,7 +716,7 @@ export default function ProvidersPage() {
         color: "var(--foreground)"
       }}
     >
-      <div style={{ maxWidth: "1280px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "20px" }}>
+       <div style={{ maxWidth: "1280px", minWidth: 0, margin: "0 auto", display: "flex", flexDirection: "column", gap: "20px" }}>
         {/* PAGE HEADER */}
         <header>
           <h1 style={{ fontSize: "20px", fontWeight: "700", color: "var(--foreground)", marginTop: "4px", letterSpacing: "-0.01em" }}>
@@ -747,7 +748,7 @@ export default function ProvidersPage() {
         )}
 
         {/* 3 CATEGORY TABS: CHAT, EMBEDDING, PARSER */}
-        <div style={{ borderBottom: "1px solid var(--border)", display: "flex", gap: "24px" }}>
+        <div className="dashboard-scroll-tabs" style={{ borderBottom: "1px solid var(--border)", display: "flex", gap: "24px" }}>
           <Button
             variant="ghost"
             onClick={() => setActiveTab("chat")}
@@ -843,7 +844,7 @@ export default function ProvidersPage() {
         </div>
 
         {/* TWO-COLUMN LAYOUT */}
-        <div style={{ display: "grid", gridTemplateColumns: "310px 1fr", gap: "20px", minHeight: "640px" }}>
+        <div className="dashboard-providers-grid" style={{ display: "grid", gridTemplateColumns: "310px minmax(0, 1fr)", gap: "20px", minHeight: "640px" }}>
           <ProviderSidebar
             activeTab={activeTab}
             providers={providers}

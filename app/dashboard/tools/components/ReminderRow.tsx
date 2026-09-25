@@ -162,7 +162,7 @@ export default function ReminderRow({
       </td>
 
       {/* Schedule */}
-      <td style={{ padding: "12px 16px" }}>
+      <td data-label="Schedule" style={{ padding: "12px 16px" }}>
         <div style={{ fontSize: "12.5px", color: "#323130", fontWeight: "600" }}>
           {formatCronHuman(rem.cron_expression, rem.cmetadata)}
         </div>
@@ -172,12 +172,12 @@ export default function ReminderRow({
       </td>
 
       {/* Channel Target */}
-      <td style={{ padding: "12px 16px" }}>
+      <td data-label="Channel" style={{ padding: "12px 16px" }}>
         <ReminderRowChannels rem={rem} />
       </td>
 
       {/* Next Run */}
-      <td style={{ padding: "12px 16px", color: "#323130", fontSize: "12px" }}>
+      <td data-label="Next run" style={{ padding: "12px 16px", color: "#323130", fontSize: "12px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
           <div style={{ fontWeight: "600", color: rem.is_active ? "#323130" : "#a19f9d" }}>
             {rem.is_active ? formatDateTimeCustom(rem.next_run_at) : "Disabled"}
@@ -190,7 +190,7 @@ export default function ReminderRow({
       </td>
 
       {/* Status Toggle Switch */}
-      <td style={{ padding: "12px 16px", textAlign: "center", width: "90px" }} onClick={(e) => e.stopPropagation()}>
+      <td data-label="Status" style={{ padding: "12px 16px", textAlign: "center", width: "90px" }} onClick={(e) => e.stopPropagation()}>
         <label
           style={{
             position: "relative",
@@ -238,7 +238,7 @@ export default function ReminderRow({
       </td>
 
       {/* Actions */}
-      <td style={{ padding: "12px 16px", textAlign: "right" }}>
+      <td data-label="Actions" style={{ padding: "12px 16px", textAlign: "right" }}>
         <ReminderRowActions
           rem={rem}
           isTriggering={isTriggering}

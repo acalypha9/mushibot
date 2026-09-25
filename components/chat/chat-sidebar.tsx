@@ -18,6 +18,7 @@ export function getConversationTitle(conv: { title?: string; summary?: string; i
 }
 
 export interface ChatSidebarProps {
+  className?: string;
   conversations: Conversation[];
   activeConvId: string | null;
   isSidebarCollapsed: boolean;
@@ -74,6 +75,7 @@ const styles = {
 };
 
 export function ChatSidebar({
+  className,
   conversations, activeConvId, isSidebarCollapsed, menuOpenId, menuRef,
   onToggleSidebar, onCreateConversation, onSelectConversation, onToggleMenu,
   onTogglePin, onStartRename, onDeleteConversation, onLogout, user,
@@ -82,6 +84,7 @@ export function ChatSidebar({
 
   return (
     <aside
+      className={className}
       aria-label="Chat Sessions"
       style={{
         width: isSidebarCollapsed ? "68px" : "260px",

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Sparkles, LayoutDashboard, Pencil } from "lucide-react";
+import { ArrowLeft, Sparkles, LayoutDashboard, Pencil } from "lucide-react";
 import { api, PaginationEnvelope } from "@/lib/api";
 import { ChatWindow } from "@/components/chat/chat-window";
 import { ChatSidebar, Conversation, getConversationTitle } from "@/components/chat/chat-sidebar";
@@ -16,6 +16,15 @@ export default function ChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
   const [sessionKey, setSessionKey] = useState<string>("new-0");
+  const [mobileView, setMobileView] = useState<"list" | "detail">("list");
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("new") === "1") {
+      setActiveConv({ id: "new", status: "OPEN", created_at: new Date().toISOString() });
+      setMobileView("detail");
+      window.history.replaceState(window.history.state, "", "/chat");
+    }
+  }, []);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() =>
     typeof window !== "undefined" && localStorage.getItem("csa_chat_sidebar_collapsed") === "true"
@@ -76,16 +85,19 @@ export default function ChatPage() {
   const handleCreateConversation = () => {
     setSessionKey(`new-${Date.now()}`);
     setActiveConv({ id: "new", status: "OPEN", created_at: new Date().toISOString() });
+    setMobileView("detail");
   };
 
   const handleSelectConversation = (conv: Conversation) => {
     setSessionKey(conv.id);
     setActiveConv(conv);
+    setMobileView("detail");
   };
 
   const handleConversationCreated = (newConv: Conversation) => {
     setConversations((prev) => [newConv, ...prev.filter((c) => c.id !== "new")]);
     setActiveConv(newConv);
+    setMobileView("detail");
   };
 
   const handleTitleUpdated = (convId: string, title: string) => {
@@ -154,8 +166,9 @@ export default function ChatPage() {
   }
 
   return (
-    <main style={{ display: "flex", height: "100vh", overflow: "hidden", background: "var(--background)", color: "var(--foreground)" }}>
+    <main className={`chat-page chat-page--${mobileView}`} style={{ display: "flex", height: "100vh", overflow: "hidden", background: "var(--background)", color: "var(--foreground)" }}>
       <ChatSidebar
+        className="chat-page__sidebar"
         conversations={conversations} activeConvId={activeConv?.id || null}
         isSidebarCollapsed={isSidebarCollapsed} menuOpenId={menuOpenId} menuRef={menuRef}
         onToggleSidebar={toggleSidebar} onCreateConversation={handleCreateConversation}
@@ -166,18 +179,29 @@ export default function ChatPage() {
         user={user}
       />
 
-      <div style={{ flexGrow: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div className="chat-page__detail" style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <header style={{
           flexShrink: 0, padding: "12px var(--space-3)", borderBottom: "1px solid var(--border)",
           display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--card)",
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1 }}>
+            <button
+              type="button"
+              className="chat-page__back"
+              onClick={() => {
+                setActiveConv(null);
+                setMobileView("list");
+              }}
+              aria-label="Back to conversations"
+            >
+              <ArrowLeft aria-hidden="true" size={18} />
+            </button>
             <h2 style={{ fontSize: "14px", fontWeight: "700", color: "var(--foreground)", margin: 0, fontFamily: "var(--font-display)", letterSpacing: "-0.01em" }}>
               {activeTitle}
             </h2>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
             {user.role === "ADMIN" && (
               <Link
                 href="/dashboard"
@@ -190,7 +214,7 @@ export default function ChatPage() {
           </div>
         </header>
 
-        <section style={{ flexGrow: 1, minWidth: 0, background: "var(--card)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <section className="chat-page__conversation" style={{ flexGrow: 1, minWidth: 0, background: "var(--card)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           {activeConv ? (
             <ChatWindow
               key={sessionKey}
@@ -289,6 +313,62 @@ export default function ChatPage() {
           </div>
         </form>
       </Modal>
+      <style jsx>{`
+        .chat-page__back {
+          display: none;
+          align-items: center;
+          justify-content: center;
+          flex: 0 0 auto;
+          width: 40px;
+          height: 40px;
+          padding: 0;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-sm);
+          background: var(--card);
+          color: var(--foreground);
+          cursor: pointer;
+        }
+
+        @media (max-width: 767px) {
+          .chat-page {
+            width: 100%;
+            height: 100dvh !important;
+            min-width: 0;
+          }
+
+          .chat-page :global(.chat-page__sidebar) {
+            width: 100% !important;
+            min-width: 0;
+            flex: 1 1 100%;
+            border-right: 0 !important;
+          }
+
+          .chat-page__detail {
+            display: none !important;
+            width: 100%;
+            min-width: 0;
+            flex: 1 1 100%;
+          }
+
+          .chat-page--detail > :global(.chat-page__sidebar) {
+            display: none !important;
+          }
+
+          .chat-page--detail .chat-page__detail {
+            display: flex !important;
+          }
+
+          .chat-page__back {
+            display: inline-flex;
+          }
+
+          .chat-page__conversation,
+          .chat-page__conversation > div {
+            width: 100%;
+            min-width: 0;
+          }
+        }
+      `}</style>
     </main>
   );
 }

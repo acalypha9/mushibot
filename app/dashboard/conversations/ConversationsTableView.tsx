@@ -60,6 +60,7 @@ export function ConversationsTableView({
 }: ConversationsTableViewProps) {
   return (
     <div
+      className="conversations-table-view"
       style={{
         background: "#ffffff",
         borderRadius: "8px",

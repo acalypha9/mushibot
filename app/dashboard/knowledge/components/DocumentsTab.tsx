@@ -9,6 +9,7 @@ import IngestionBanner from "./IngestionBanner";
 import DocumentTable from "./DocumentTable";
 import DocumentPagination from "./DocumentPagination";
 import DocumentDetailView from "./DocumentDetailView";
+import styles from "../knowledge.module.css";
 
 interface DocumentsTabProps {
   viewingDoc: DocumentItem | null;
@@ -106,7 +107,7 @@ export default function DocumentsTab({
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+    <div className={styles.documentsTab}>
       <IngestionBanner
         ingestingDoc={ingestingDoc}
         ingestProgress={ingestProgress}

@@ -92,7 +92,7 @@ export function ConversationsToolbar({
             </span>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "nowrap" }}>
+          <div className="conversations-filters" style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", minWidth: 0 }}>
             <Select
               value={platformFilter}
               onChange={(e) => onPlatformFilterChange(e.target.value)}

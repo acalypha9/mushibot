@@ -12,12 +12,15 @@ import {
   MoreHorizontal,
   MessageSquare,
   Menu,
+  X,
 } from "lucide-react";
 
 interface DashboardSidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   userRole?: string;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 interface NavItem {
@@ -30,6 +33,8 @@ export default function DashboardSidebar({
   isCollapsed,
   onToggleCollapse,
   userRole,
+  isMobileOpen,
+  onCloseMobile,
 }: DashboardSidebarProps) {
   const pathname = usePathname();
 
@@ -48,7 +53,9 @@ export default function DashboardSidebar({
 
   return (
     <aside
+      id="dashboard-sidebar"
       aria-label="Dashboard navigation"
+      className={`dashboard-sidebar ${isMobileOpen ? "mobile-open" : ""}`}
       style={{
         width: isCollapsed ? "48px" : "200px",
         backgroundColor: "#f3f2f1",
@@ -65,17 +72,19 @@ export default function DashboardSidebar({
       }}
     >
       <div
+        className="dashboard-sidebar-header-row"
         style={{
           height: "44px",
           padding: isCollapsed ? "0" : "0 12.5px",
           display: "flex",
           alignItems: "center",
-          justifyContent: isCollapsed ? "center" : "flex-start",
+          justifyContent: isCollapsed ? "center" : "space-between",
           boxSizing: "border-box",
         }}
       >
         <button
           type="button"
+          className="dashboard-sidebar-collapse-btn"
           onClick={onToggleCollapse}
           title={isCollapsed ? "Expand menu" : "Collapse menu"}
           aria-label={isCollapsed ? "Expand menu" : "Collapse menu"}
@@ -105,6 +114,39 @@ export default function DashboardSidebar({
         >
           <Menu style={{ width: "17px", height: "17px" }} />
         </button>
+
+        <button
+          type="button"
+          className="dashboard-sidebar-mobile-close-btn"
+          onClick={onCloseMobile}
+          title="Close navigation menu"
+          aria-label="Close navigation menu"
+          style={{
+            display: "none",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "36px",
+            height: "36px",
+            padding: 0,
+            borderRadius: "var(--radius-sm)",
+            border: "1px solid var(--border)",
+            backgroundColor: "transparent",
+            color: "var(--foreground)",
+            cursor: "pointer",
+            transition: "all 0.15s ease",
+            boxSizing: "border-box",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "var(--muted)";
+            e.currentTarget.style.color = "var(--primary)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent";
+            e.currentTarget.style.color = "var(--foreground)";
+          }}
+        >
+          <X style={{ width: "18px", height: "18px" }} />
+        </button>
       </div>
 
       <nav
@@ -123,6 +165,7 @@ export default function DashboardSidebar({
             <Link
               key={item.label}
               href={item.href}
+              onClick={onCloseMobile}
               title={isCollapsed ? item.label : undefined}
               style={{
                 display: "flex",
@@ -168,7 +211,7 @@ export default function DashboardSidebar({
                   flexShrink: 0,
                 }}
               />
-              {!isCollapsed && <span style={{ whiteSpace: "nowrap" }}>{item.label}</span>}
+              <span className={isCollapsed ? "dashboard-sidebar-collapsed-label" : undefined} style={{ whiteSpace: "nowrap" }}>{item.label}</span>
             </Link>
           );
         })}
@@ -176,7 +219,8 @@ export default function DashboardSidebar({
 
       <div style={{ padding: "8px", borderTop: "1px solid #e1dfdd" }}>
         <Link
-          href="/chat"
+          href="/chat?new=1"
+          onClick={onCloseMobile}
           title={isCollapsed ? "Conversation" : undefined}
           style={{
             display: "flex",
@@ -202,7 +246,7 @@ export default function DashboardSidebar({
           }}
         >
           <MessageSquare style={{ width: "17px", height: "17px", color: "var(--muted-foreground)", flexShrink: 0 }} />
-          {!isCollapsed && <span style={{ whiteSpace: "nowrap" }}>Conversation</span>}
+          <span className={isCollapsed ? "dashboard-sidebar-collapsed-label" : undefined} style={{ whiteSpace: "nowrap" }}>Conversation</span>
         </Link>
       </div>
     </aside>

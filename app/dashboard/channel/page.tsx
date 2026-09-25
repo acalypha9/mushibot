@@ -1185,6 +1185,7 @@ export default function ChannelPage() {
 
     return (
       <div
+        className="dashboard-responsive-page"
         style={{
           minHeight: "100%",
           backgroundColor: "#faf9f8",
@@ -1234,7 +1235,7 @@ export default function ChannelPage() {
           </header>
 
           {/* Top Navigation Tabs */}
-          <div style={{ display: "flex", borderBottom: "1px solid #e1dfdd", gap: "24px" }}>
+          <div className="dashboard-scroll-tabs" style={{ display: "flex", borderBottom: "1px solid #e1dfdd", gap: "24px" }}>
             {[
               { id: "overview", label: "Overview", icon: BookOpen },
               { id: "connection", label: "Connection", icon: Wifi },
@@ -1255,7 +1256,9 @@ export default function ChannelPage() {
                       setShowPairingQR(false);
                     }
                   }}
-                  style={{
+                   style={{
+                     flexShrink: 0,
+                     whiteSpace: "nowrap",
                     borderBottom: isActive ? "2px solid #742774" : "2px solid transparent",
                     color: isActive ? "#742774" : "#605e5c",
                     fontWeight: isActive ? "600" : "400",

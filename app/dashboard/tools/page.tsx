@@ -17,6 +17,7 @@ import ToolsNavigationTabs from "./components/ToolsNavigationTabs";
 import FunctionToolsTab from "./components/FunctionToolsTab";
 import McpTab from "./components/McpTab";
 import RemindersTab from "./components/RemindersTab";
+import styles from "./components/RemindersTab.module.css";
 
 // Custom State Hooks
 import { useFunctionToolsState } from "./hooks/useFunctionToolsState";
@@ -84,6 +85,7 @@ export default function FunctionToolsPage() {
 
   return (
     <div
+      className={styles.toolsPage}
       style={{
         minHeight: "100%",
         backgroundColor: "#faf9f8",
@@ -93,7 +95,7 @@ export default function FunctionToolsPage() {
         color: "#323130",
       }}
     >
-      <div style={{ maxWidth: "1280px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "20px" }}>
+      <div className={styles.toolsContent} style={{ maxWidth: "1280px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "20px" }}>
         <header>
           <h1
             style={{

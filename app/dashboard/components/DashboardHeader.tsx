@@ -12,9 +12,11 @@ import {
   AlertTriangle,
   X,
   RefreshCw,
+  Menu,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import HeaderSearch from "@/components/HeaderSearch";
+import { getMobileDrawerAria } from "@/lib/utils/dashboardResponsive";
 import type { User } from "../../auth";
 
 interface DashboardHeaderProps {
@@ -22,6 +24,8 @@ interface DashboardHeaderProps {
   avatarUrl: string;
   onOpenSettings: () => void;
   onLogout: () => void;
+  isMobileMenuOpen?: boolean;
+  onToggleMobileMenu?: () => void;
 }
 
 export interface NotificationItem {
@@ -58,6 +62,8 @@ export default function DashboardHeader({
   avatarUrl,
   onOpenSettings,
   onLogout,
+  isMobileMenuOpen,
+  onToggleMobileMenu,
 }: DashboardHeaderProps) {
   const router = useRouter();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -245,10 +251,12 @@ export default function DashboardHeader({
     : "FS";
 
   const effectiveAvatar = avatarUrl || user.avatar_url;
+  const drawerAria = getMobileDrawerAria(Boolean(isMobileMenuOpen));
 
   return (
     <>
       <header
+        className="dashboard-header"
         style={{
           height: "52px",
           backgroundColor: "#742774",
@@ -262,7 +270,36 @@ export default function DashboardHeader({
           zIndex: 100,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+          <button
+            type="button"
+            className="dashboard-mobile-menu-trigger"
+            onClick={onToggleMobileMenu}
+            aria-label={drawerAria["aria-label"]}
+            aria-expanded={drawerAria["aria-expanded"]}
+            aria-controls={drawerAria["aria-controls"]}
+            style={{
+              background: isMobileMenuOpen ? "rgba(255, 255, 255, 0.25)" : "transparent",
+              color: "#ffffff",
+              border: "1px solid rgba(255, 255, 255, 0.3)",
+              borderRadius: "8px",
+              width: "34px",
+              height: "34px",
+              padding: 0,
+              cursor: "pointer",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              transition: "all 0.15s ease",
+            }}
+          >
+            {isMobileMenuOpen ? (
+              <X style={{ width: "18px", height: "18px" }} />
+            ) : (
+              <Menu style={{ width: "18px", height: "18px" }} />
+            )}
+          </button>
+
           <Link
             href="/dashboard"
             style={{
@@ -275,6 +312,7 @@ export default function DashboardHeader({
               display: "flex",
               alignItems: "center",
               gap: "8px",
+              flexShrink: 0,
             }}
           >
             <Image
@@ -289,13 +327,13 @@ export default function DashboardHeader({
                 backgroundColor: "#ffffff",
               }}
             />
-            <span>Mushibot</span>
+            <span className="dashboard-header-brand-text">Mushibot</span>
           </Link>
         </div>
 
         <HeaderSearch onOpenSettings={onOpenSettings} />
 
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div className="dashboard-header-actions" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           {/* Notification Bell Button & Dropdown */}
           <div style={{ position: "relative" }} ref={notifMenuRef}>
             <button
@@ -352,6 +390,7 @@ export default function DashboardHeader({
               <div
                 role="region"
                 aria-label="Notifications Panel"
+                className="dashboard-notif-popover"
                 style={{
                   position: "absolute",
                   right: 0,
@@ -746,6 +785,7 @@ export default function DashboardHeader({
             {showUserMenu && (
               <div
                 role="menu"
+                className="dashboard-user-menu-popover"
                 style={{
                   position: "absolute",
                   right: 0,
@@ -821,6 +861,7 @@ export default function DashboardHeader({
           role="alertdialog"
           aria-modal="true"
           aria-labelledby="alert-dialog-title"
+          className="dashboard-alert-popup"
           style={{
             position: "fixed",
             top: "68px",

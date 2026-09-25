@@ -23,6 +23,7 @@ const securityHeaders = [
       "object-src 'none'",
       scriptSource,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "worker-src 'self'",
     ].join("; "),
   },
 ];
@@ -38,6 +39,15 @@ const nextConfig: NextConfig = {
       {
         source: "/(.*)",
         headers: securityHeaders,
+      },
+      {
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+        ],
       },
     ];
   },

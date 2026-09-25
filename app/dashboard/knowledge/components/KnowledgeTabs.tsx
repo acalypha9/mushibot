@@ -1,6 +1,7 @@
 import React from "react";
 import Button from "@/components/ui/Button";
 import { BookOpen, FileText, Search, Settings } from "lucide-react";
+import styles from "../knowledge.module.css";
 
 export type KnowledgeTabId = "overview" | "documents" | "retrieval" | "settings";
 
@@ -23,7 +24,7 @@ export default function KnowledgeTabs({
   ];
 
   return (
-    <div style={{ display: "flex", borderBottom: "1px solid #e1dfdd", gap: "24px" }}>
+    <div className={styles.knowledgeTabs}>
       {tabs.map((tab) => {
         const IconComp = tab.icon;
         const isActive = activeTab === tab.id;

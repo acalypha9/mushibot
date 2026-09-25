@@ -3,6 +3,7 @@
 import React from "react";
 import Button from "@/components/ui/Button";
 import { Wrench, Cpu, Clock } from "lucide-react";
+import styles from "./RemindersTab.module.css";
 
 interface ToolsNavigationTabsProps {
   mainTab: "function_tools" | "mcp" | "reminders";
@@ -17,7 +18,7 @@ export default function ToolsNavigationTabs({ mainTab, setMainTab }: ToolsNaviga
   ];
 
   return (
-    <div style={{ display: "flex", borderBottom: "1px solid #e1dfdd", gap: "24px" }}>
+    <div className={styles.toolsTabs} style={{ display: "flex", borderBottom: "1px solid #e1dfdd", gap: "24px" }}>
       {tabs.map((tab) => {
         const IconComp = tab.icon;
         const isActive = mainTab === tab.id;

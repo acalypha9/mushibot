@@ -74,6 +74,9 @@ export function ChatInputBar({
       }}
       style={{
         padding: "12px 16px",
+        width: "100%",
+        minWidth: 0,
+        boxSizing: "border-box",
         borderTop: "1px solid var(--border)",
         background: "var(--muted)",
         display: "flex",

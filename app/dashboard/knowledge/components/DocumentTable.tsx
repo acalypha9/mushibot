@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, ArrowUpDown } from "lucide-react";
 import { DocumentItem } from "../types";
 import { DocSortColumn, getSortAriaSort } from "./documentsLogic";
 import DocumentRow from "./DocumentRow";
+import styles from "../knowledge.module.css";
 
 interface DocumentTableProps {
   currentDocsPage: DocumentItem[];
@@ -55,16 +56,8 @@ export default function DocumentTable({
   );
 
   return (
-    <div
-      style={{
-        background: "#ffffff",
-        border: "1px solid #e1dfdd",
-        borderRadius: "8px",
-        overflow: "hidden",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
-      }}
-    >
-      <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
+    <div className={styles.documentTableScroll}>
+      <table className={styles.documentTable}>
         <thead>
           <tr
             style={{

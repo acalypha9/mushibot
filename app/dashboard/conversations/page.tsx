@@ -12,6 +12,7 @@ import { ConversationsTableView } from "./ConversationsTableView";
 import { MessageLogDrawer } from "./MessageLogDrawer";
 import { SplitConversationView } from "./SplitConversationView";
 import { DeleteConversationModal } from "./DeleteConversationModal";
+import "./conversations-responsive.css";
 
 export default function ConversationsPage() {
   const { token, user } = useAuth();
@@ -128,6 +129,7 @@ export default function ConversationsPage() {
 
   return (
     <div
+      className="conversations-page"
       style={{
         minHeight: "100%",
         backgroundColor: "#faf9f8",
@@ -137,7 +139,7 @@ export default function ConversationsPage() {
         color: "#323130"
       }}
     >
-      <div style={{ maxWidth: "1280px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "20px" }}>
+      <div style={{ maxWidth: "1280px", minWidth: 0, margin: "0 auto", display: "flex", flexDirection: "column", gap: "20px" }}>
         <ConversationsToolbar
           viewMode={viewMode}
           onViewModeChange={setViewMode}

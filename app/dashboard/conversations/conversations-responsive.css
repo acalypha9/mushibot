@@ -1,0 +1,26 @@
+@media (max-width: 640px) {
+  .conversations-page {
+    padding: 20px 16px 48px !important;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .conversations-table-view {
+    min-width: 0;
+    padding: 12px !important;
+  }
+
+  .conversations-filters {
+    width: 100%;
+  }
+
+  .conversations-filters > select {
+    flex: 1 1 130px !important;
+    width: auto !important;
+    min-width: 0;
+  }
+
+  .conversations-filters > div {
+    max-width: 100%;
+  }
+}

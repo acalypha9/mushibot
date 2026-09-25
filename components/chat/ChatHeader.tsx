@@ -45,6 +45,7 @@ export function ChatHeader({
 }: ChatHeaderProps) {
   return (
     <div
+      className="chat-window__header"
       style={{
         padding: "10px 16px",
         borderBottom: "1px solid var(--border)",
@@ -53,15 +54,17 @@ export function ChatHeader({
         justifyContent: "space-between",
         alignItems: "center",
         fontSize: "12px",
+        gap: "8px",
       }}
     >
-      <span>
+      <span className="chat-window__conversation-id">
         Active Conversation: <strong style={{ fontFamily: "var(--font-mono)", color: "var(--foreground)" }}>{conversationId}</strong>
       </span>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <div className="chat-window__controls" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
         {configuredModelsList.length > 0 ? (
           <select
+            className="chat-window__model-select"
             value={selectedModel}
             onChange={(e) => onModelChange(e.target.value)}
             style={{
@@ -152,6 +155,39 @@ export function ChatHeader({
           {status}
         </span>
       </div>
+      <style jsx>{`
+        .chat-window__header,
+        .chat-window__controls,
+        .chat-window__conversation-id {
+          min-width: 0;
+        }
+
+        .chat-window__conversation-id {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .chat-window__model-select {
+          max-width: 100%;
+          min-width: 0;
+        }
+
+        @media (max-width: 767px) {
+          .chat-window__header {
+            padding-inline: var(--space-2) !important;
+            align-items: flex-start !important;
+          }
+
+          .chat-window__conversation-id {
+            flex: 1 1 0;
+          }
+
+          .chat-window__controls {
+            flex: 0 1 auto;
+          }
+        }
+      `}</style>
     </div>
   );
 }

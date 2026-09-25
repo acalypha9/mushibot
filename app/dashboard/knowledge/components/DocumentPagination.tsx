@@ -10,6 +10,7 @@ import {
   ChevronsRight
 } from "lucide-react";
 import { formatDocPaginationRange } from "./documentsLogic";
+import styles from "../knowledge.module.css";
 
 interface DocumentPaginationProps {
   totalFiltered: number;
@@ -34,6 +35,7 @@ export default function DocumentPagination({
 }: DocumentPaginationProps) {
   return (
     <div
+      className={styles.documentPagination}
       style={{
         padding: "12px 20px",
         display: "flex",

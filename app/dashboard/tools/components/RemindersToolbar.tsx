@@ -4,6 +4,7 @@ import React from "react";
 import Button from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { Search, X, RefreshCw, Plus } from "lucide-react";
+import styles from "./RemindersTab.module.css";
 
 interface RemindersToolbarProps {
   reminderCount: number;
@@ -62,7 +63,7 @@ export default function RemindersToolbar({
         </span>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "nowrap" }}>
+      <div className={styles.toolbarControls} style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "nowrap" }}>
         <Select
           value={channelFilter}
           onChange={(e) => {

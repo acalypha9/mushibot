@@ -5,6 +5,7 @@ import Button from "@/components/ui/Button";
 import { Upload } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Search, X } from "lucide-react";
+import styles from "../knowledge.module.css";
 
 interface DocumentsToolbarProps {
   hasNoEmbeddingModel: boolean;
@@ -26,7 +27,7 @@ export default function DocumentsToolbar({
   onSetCurrentPage
 }: DocumentsToolbarProps) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+    <div className={styles.documentsToolbar}>
       <Button
         variant="primary"
         size="md"
@@ -43,7 +44,7 @@ export default function DocumentsToolbar({
         <Upload style={{ width: "14px", height: "14px" }} /> Upload Document
       </Button>
 
-      <div style={{ position: "relative", width: "240px" }}>
+      <div className={styles.documentSearch}>
         <Search
           style={{
             position: "absolute",

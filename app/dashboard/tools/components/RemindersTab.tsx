@@ -9,6 +9,7 @@ import ToolsPagination from "./ToolsPagination";
 import Button from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ArrowUpDown, Loader2, Trash2 } from "lucide-react";
+import styles from "./RemindersTab.module.css";
 
 interface RemindersTabProps {
   reminders: CronReminderItem[];
@@ -150,6 +151,7 @@ export default function RemindersTab({
       <ReminderKpiStats reminders={reminders} availableChannels={availableChannels} />
 
       <div
+        className={styles.panel}
         style={{
           background: "#ffffff",
           borderRadius: "8px",
@@ -208,8 +210,8 @@ export default function RemindersTab({
             )}
           </div>
 
-          <div style={{ overflowX: "auto", border: "1px solid #e1dfdd", borderRadius: "6px" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
+          <div className={styles.tableViewport} style={{ overflowX: "auto", border: "1px solid #e1dfdd", borderRadius: "6px" }}>
+            <table className={styles.remindersTable} style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
               <thead>
                 <tr style={{ background: "#f3f2f1", borderBottom: "1px solid #e1dfdd", color: "#605e5c" }}>
                   <th

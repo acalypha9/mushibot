@@ -1,0 +1,159 @@
+.panel {
+  min-width: 0;
+}
+
+.toolsPage,
+.toolsContent {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.toolsContent > * {
+  min-width: 0;
+}
+
+.toolsTabs {
+  min-width: 0;
+}
+
+.tableViewport {
+  min-width: 0;
+}
+
+.toolbarControls {
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .toolsPage {
+    width: 100%;
+    padding: 20px 16px 36px !important;
+  }
+
+  .toolsTabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+
+  .toolsTabs > * {
+    flex: 0 0 auto;
+  }
+
+  .panel {
+    padding: 16px !important;
+  }
+
+  .tableViewport {
+    overflow: visible !important;
+    border: 0 !important;
+  }
+
+  .remindersTable {
+    display: block;
+    width: 100%;
+  }
+
+  .remindersTable thead {
+    display: none;
+  }
+
+  .remindersTable tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .remindersTable tbody tr {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid #e1dfdd;
+    border-radius: 6px;
+    background: #ffffff;
+    overflow-wrap: anywhere;
+  }
+
+  .remindersTable tbody tr > td {
+    width: auto !important;
+    min-width: 0;
+    padding: 0 !important;
+    text-align: left !important;
+  }
+
+  .remindersTable tbody tr > td:nth-child(2) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .remindersTable tbody tr > td:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .remindersTable tbody tr > td:nth-child(3) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .remindersTable tbody tr > td:nth-child(4) {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .remindersTable tbody tr > td:nth-child(5) {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .remindersTable tbody tr > td:nth-child(6) {
+    grid-column: 1 / -1;
+    grid-row: 5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .remindersTable tbody tr > td:nth-child(7) {
+    grid-column: 1 / -1;
+    grid-row: 6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #f3f2f1;
+    padding-top: 10px !important;
+  }
+
+  .remindersTable tbody tr > td:nth-child(n + 3)::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    color: #605e5c;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .toolbarControls {
+    width: 100%;
+    flex-wrap: wrap !important;
+  }
+
+  .toolbarControls > * {
+    flex: 1 1 calc(50% - 8px) !important;
+    min-width: 0;
+  }
+
+  .toolbarControls > div {
+    flex-basis: 100% !important;
+    width: 100% !important;
+  }
+}

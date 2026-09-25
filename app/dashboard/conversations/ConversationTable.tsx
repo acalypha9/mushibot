@@ -88,7 +88,7 @@ export function ConversationTable({
 
       {/* TABLE DATA CONTAINER */}
       <div style={{ overflowX: "auto", border: "1px solid #e1dfdd", borderRadius: "8px" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
+        <table style={{ width: "100%", minWidth: "760px", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
           <thead>
             <tr style={{ background: "#faf9f8", borderBottom: "1px solid #e1dfdd", color: "#605e5c", fontWeight: "600", userSelect: "none" }}>
               <th

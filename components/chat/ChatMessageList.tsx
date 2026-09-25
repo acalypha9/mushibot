@@ -36,6 +36,8 @@ export function ChatMessageList({
       <div
         style={{
           flexGrow: 1,
+          minWidth: 0,
+          width: "100%",
           overflowY: "auto",
           padding: "var(--space-4)",
           display: "flex",

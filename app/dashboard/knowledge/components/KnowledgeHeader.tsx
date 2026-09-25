@@ -1,6 +1,7 @@
 import React from "react";
 import { ArrowLeft } from "lucide-react";
 import { Collection } from "../types";
+import styles from "../knowledge.module.css";
 
 interface KnowledgeHeaderProps {
   selectedCol: Collection;
@@ -13,15 +14,9 @@ export default function KnowledgeHeader({
 }: KnowledgeHeaderProps) {
   return (
     <header
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        flexWrap: "wrap",
-        gap: "16px",
-      }}
+      className={styles.collectionHeader}
     >
-      <div>
+      <div className={styles.collectionHeading}>
         <h1
           style={{
             fontSize: "20px",
@@ -51,7 +46,7 @@ export default function KnowledgeHeader({
             Knowledge Base
           </span>
           <span style={{ color: "#8a8886", fontWeight: "400" }}>/</span>
-          <span>{selectedCol.name}</span>
+          <span className={styles.collectionName}>{selectedCol.name}</span>
         </h1>
         <p style={{ fontSize: "13px", color: "#605e5c", marginTop: "4px" }}>
           Manage document parser pipelines, vector chunking, and AI retrieval settings for this collection.

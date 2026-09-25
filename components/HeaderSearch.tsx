@@ -322,7 +322,7 @@ export default function HeaderSearch({ onOpenSettings }: HeaderSearchProps) {
   }, [filteredResults]);
 
   return (
-    <div ref={containerRef} style={{ flex: "0 1 440px", position: "relative", margin: "0 16px" }}>
+    <div ref={containerRef} className="dashboard-header-search-container" style={{ flex: "0 1 440px", position: "relative", margin: "0 16px" }}>
       {/* Search Input Bar */}
       <div style={{ position: "relative", width: "100%", display: "flex", alignItems: "center" }}>
         <div
@@ -400,6 +400,7 @@ export default function HeaderSearch({ onOpenSettings }: HeaderSearchProps) {
       {/* Clean Light-Blurred Dropdown Results Overlay - ONLY shown when input text exists */}
       {isOpen && query.trim() !== "" && (
         <div
+          className="dashboard-search-dropdown"
           style={{
             position: "absolute",
             top: "calc(100% + 6px)",

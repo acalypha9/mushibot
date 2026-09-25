@@ -216,6 +216,7 @@ export default function GlobalModelDownloadWidget() {
   return (
     <aside
       aria-label="Model download progress"
+      className="dashboard-download-widget"
       style={{
         position: "fixed",
         bottom: "20px",

@@ -15,6 +15,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string>(user?.avatar_url || "");
   const [, startTransition] = useTransition();
@@ -33,6 +34,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isMobileMenuOpen) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isMobileMenuOpen]);
+
+  useEffect(() => {
     if (user?.avatar_url && !avatarUrl) {
       startTransition(() => {
         setAvatarUrl(user.avatar_url || "");
@@ -46,6 +61,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       localStorage.setItem("csa_dashboard_sidebar_collapsed", String(next));
       return next;
     });
+  };
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen((prev) => !prev);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
   };
 
   useEffect(() => {
@@ -96,6 +119,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div
       suppressHydrationWarning
+      className="dashboard-layout-root"
       style={{
         display: "flex",
         flexDirection: "column",
@@ -111,16 +135,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         avatarUrl={avatarUrl}
         onOpenSettings={() => setShowSettingsModal(true)}
         onLogout={logout}
+        isMobileMenuOpen={isMobileMenuOpen}
+        onToggleMobileMenu={toggleMobileMenu}
       />
 
-      <div style={{ display: "flex", flexGrow: 1, overflow: "hidden" }}>
+      <div
+        className={`dashboard-sidebar-backdrop ${isMobileMenuOpen ? "active" : ""}`}
+        onClick={closeMobileMenu}
+        aria-hidden="true"
+      />
+
+      <div className="dashboard-body" style={{ display: "flex", flexGrow: 1, minWidth: 0, minHeight: 0, overflow: "hidden", position: "relative" }}>
         <DashboardSidebar
           isCollapsed={isCollapsed}
           onToggleCollapse={toggleSidebar}
           userRole={user.role}
+          isMobileOpen={isMobileMenuOpen}
+          onCloseMobile={closeMobileMenu}
         />
 
-        <main style={{ flexGrow: 1, overflowY: "auto", position: "relative" }}>
+        <main
+          className="dashboard-main-content"
+          style={{ flexGrow: 1, minWidth: 0, overflowY: "auto", position: "relative" }}
+        >
           {children}
         </main>
       </div>

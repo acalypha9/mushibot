@@ -776,6 +776,7 @@ export default function DashboardPage() {
 
   return (
     <div
+      className="dashboard-page-container"
       style={{
         minHeight: "100%",
         backgroundColor: "#faf9f8",
@@ -799,7 +800,10 @@ export default function DashboardPage() {
         </header>
 
         {/* 2. NAVIGATION TABS */}
-        <div style={{ display: "flex", gap: "8px", borderBottom: "1px solid #e1dfdd", marginBottom: "20px", paddingBottom: "2px" }}>
+        <div
+          className="dashboard-nav-tabs"
+          style={{ display: "flex", gap: "8px", borderBottom: "1px solid #e1dfdd", marginBottom: "20px", paddingBottom: "2px" }}
+        >
           <Button
             variant={activeTab === "telemetry" ? "primary" : "ghost"}
             size="md"
@@ -825,7 +829,10 @@ export default function DashboardPage() {
         {activeTab === "telemetry" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
             {/* STAT FILTERS ROW (BELOW TAB LINE, ALIGNED TOP RIGHT ABOVE "MODELS USED") */}
-            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px" }}>
+            <div
+              className="dashboard-stat-filters"
+              style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px" }}
+            >
               {/* Timeframe Filter (24 Hours, 30 Days, 12 Weeks) */}
               <div
                 style={{
@@ -870,7 +877,10 @@ export default function DashboardPage() {
             </div>
 
             {/* 6 KEY METRIC CARDS GRID */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "16px" }}>
+            <div
+              className="dashboard-metrics-grid"
+              style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "16px" }}
+            >
               {/* Card 1: Total Tokens */}
               <div
                 style={{
@@ -1029,9 +1039,13 @@ export default function DashboardPage() {
             </div>
 
             {/* MAIN TREND GRAPH & DONUT CHART ROW */}
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "20px" }}>
+            <div
+              className="dashboard-trend-donut-grid"
+              style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "20px" }}
+            >
               {/* MODEL USAGE TREND GRAPH */}
               <div
+                className="dashboard-card"
                 style={{
                   backgroundColor: "#ffffff",
                   border: "1px solid #e1dfdd",
@@ -1082,6 +1096,7 @@ export default function DashboardPage() {
 
               {/* BY ACCOUNT DONUT CHART */}
               <div
+                className="dashboard-card"
                 style={{
                   backgroundColor: "#ffffff",
                   border: "1px solid #e1dfdd",
@@ -1122,9 +1137,13 @@ export default function DashboardPage() {
             </div>
 
             {/* TOKEN USAGE BAR CHART & MODEL BREAKDOWN TABLE */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "20px" }}>
+            <div
+              className="dashboard-barchart-table-grid"
+              style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "20px" }}
+            >
               {/* TOKEN USAGE BAR CHART (GROUPED 3-BAR SVG CHART) */}
               <div
+                className="dashboard-card"
                 style={{
                   backgroundColor: "#ffffff",
                   border: "1px solid #e1dfdd",
@@ -1157,6 +1176,7 @@ export default function DashboardPage() {
 
               {/* MODEL BREAKDOWN TABLE */}
               <div
+                className="dashboard-card"
                 style={{
                   backgroundColor: "#ffffff",
                   border: "1px solid #e1dfdd",
@@ -1275,10 +1295,14 @@ export default function DashboardPage() {
         {/* TAB 2: SYSTEM MODULES GRID                           */}
         {/* ---------------------------------------------------- */}
         {activeTab === "modules" && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px" }}>
+          <div
+            className="dashboard-modules-grid"
+            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px" }}
+          >
             {/* Module 1: Knowledge Base */}
             <Link href="/dashboard/knowledge" style={{ textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", height: "100%" }}>
               <div
+                className="dashboard-card"
                 style={{
                   flex: 1,
                   height: "100%",
@@ -1324,6 +1348,7 @@ export default function DashboardPage() {
             {/* Module 2: Channels */}
             <Link href="/dashboard/channel" style={{ textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", height: "100%" }}>
               <div
+                className="dashboard-card"
                 style={{
                   flex: 1,
                   height: "100%",
@@ -1369,6 +1394,7 @@ export default function DashboardPage() {
             {/* Module 3: Conversations */}
             <Link href="/dashboard/conversations" style={{ textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", height: "100%" }}>
               <div
+                className="dashboard-card"
                 style={{
                   flex: 1,
                   height: "100%",
@@ -1414,6 +1440,7 @@ export default function DashboardPage() {
             {/* Module 4: Tools & MCP */}
             <Link href="/dashboard/tools" style={{ textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", height: "100%" }}>
               <div
+                className="dashboard-card"
                 style={{
                   flex: 1,
                   height: "100%",
@@ -1459,6 +1486,7 @@ export default function DashboardPage() {
             {/* Module 5: AI Providers */}
             <Link href="/dashboard/providers" style={{ textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", height: "100%" }}>
               <div
+                className="dashboard-card"
                 style={{
                   flex: 1,
                   height: "100%",
@@ -1504,6 +1532,7 @@ export default function DashboardPage() {
             {/* Module 6: User Management */}
             <Link href="/dashboard/users" style={{ textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", height: "100%" }}>
               <div
+                className="dashboard-card"
                 style={{
                   flex: 1,
                   height: "100%",
