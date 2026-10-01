@@ -1,9 +1,16 @@
-import re
-import random
 import datetime
+import random
+import re
+from typing import Any, Dict, Optional
 from zoneinfo import ZoneInfo
-from typing import Optional, Dict, Any
+
 from croniter import croniter
+
+from services.calendar_parser import (
+    _extract_time_of_day,
+    _format_once_schedule,
+    parse_explicit_calendar_schedule,
+)
 
 
 def parse_natural_schedule(
@@ -39,6 +46,17 @@ def parse_natural_schedule(
             "next_run_at": next_dt,
             "description": f"Cron schedule: {s}"
         }
+
+    cal_sched = parse_explicit_calendar_schedule(
+        s,
+        now_in_tz=now_in_tz,
+        tz=tz,
+        tz_name=tz_name,
+        target_max_runs=target_max_runs,
+        datetime_module=datetime,
+    )
+    if cal_sched is not None:
+        return cal_sched
 
     day_map = {
         "senin": 1, "monday": 1, "mon": 1, "selasa": 2, "tuesday": 2, "tue": 2,
@@ -149,21 +167,7 @@ def parse_natural_schedule(
         }
 
     is_tomorrow = "besok" in s or "tomorrow" in s
-    time_match = None
-    explicit_match = re.search(r'(?:jam\s+|at\s+)?(\d{1,2})[:.](\d{2})', s)
-    if explicit_match:
-        time_match = (int(explicit_match.group(1)), int(explicit_match.group(2)))
-    else:
-        ampm_match = re.search(r'(?:jam\s+|at\s+)?(\d{1,2})\s*(am|pm|pagi|siang|sore|malam)?', s)
-        if ampm_match and ampm_match.group(1):
-            h = int(ampm_match.group(1))
-            m = 0
-            mod = (ampm_match.group(2) or "").lower()
-            if (mod in ("pm", "malam", "sore") or mod == "siang") and h < 12 and (mod != "siang" or h != 12):
-                h += 12
-            elif mod in ("am", "pagi") and h == 12:
-                h = 0
-            time_match = (h, m)
+    time_match = _extract_time_of_day(s)
 
     if found_day is not None and time_match:
         h, m = time_match
@@ -237,39 +241,15 @@ def parse_natural_schedule(
                 else:
                     target_dt = cand_today
 
-            cron_expr = f"{m} {h} {target_dt.day} {target_dt.month} *"
-            if not croniter.is_valid(cron_expr):
-                cron_expr = f"{m} {h} * * *"
-
-            return {
-                "cron_expression": cron_expr,
-                "cmetadata": {
-                    "is_recurring": False,
-                    "_schedule": {
-                        "type": "once",
-                        "target_date": target_dt.strftime("%Y-%m-%d"),
-                        "target_time": f"{h:02d}:{m:02d}",
-                        "max_runs": 1
-                    }
-                },
-                "is_recurring": False,
-                "next_run_at": target_dt.astimezone(datetime.timezone.utc),
-                "description": f"One-time reminder at {target_dt.strftime('%d:%m:%Y %H:%M:%S')} {tz_name}"
-            }
+            return _format_once_schedule(target_dt, h, m, 1, tz_name)
 
     target_dt = now_in_tz + datetime.timedelta(hours=1)
-    return {
-        "cron_expression": f"{target_dt.minute} {target_dt.hour} * * *",
-        "cmetadata": {
-            "is_recurring": False,
-            "_schedule": {
-                "type": "once",
-                "target_date": target_dt.strftime("%Y-%m-%d"),
-                "target_time": f"{target_dt.hour:02d}:{target_dt.minute:02d}",
-                "max_runs": 1
-            }
-        },
-        "is_recurring": False,
-        "next_run_at": target_dt.astimezone(datetime.timezone.utc),
-        "description": f"One-time reminder at {target_dt.strftime('%d:%m:%Y %H:%M:%S')} {tz_name}"
-    }
+    return _format_once_schedule(target_dt, target_dt.hour, target_dt.minute, 1, tz_name)
+
+
+__all__ = [
+    "_extract_time_of_day",
+    "_format_once_schedule",
+    "parse_explicit_calendar_schedule",
+    "parse_natural_schedule",
+]

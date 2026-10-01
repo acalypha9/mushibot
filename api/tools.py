@@ -12,11 +12,13 @@ from tools_builtin import (
     write_file,
 )
 from tools_registry import (
+    TOOL_ALIASES,
     TOOLS_BY_NAME,
     all_tools,
     get_all_tool_names,
     get_all_tools,
     get_tool_by_name,
+    resolve_canonical_tool_name,
 )
 
 __all__ = [
@@ -34,9 +36,11 @@ __all__ = [
     "send_message",
     "send_messages",
     "all_tools",
+    "TOOL_ALIASES",
     "TOOLS_BY_NAME",
     "get_all_tools",
     "get_tool_by_name",
     "get_all_tool_names",
+    "resolve_canonical_tool_name",
     "_parse_natural_schedule",
 ]

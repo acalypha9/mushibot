@@ -1,15 +1,16 @@
 import json
 import os
-import platform
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 from typing import Optional
 from langchain_core.tools import tool
 
 from fixtures import pokemon_cards
 from knowledge import vector_search
-from security import safe_path_join, safe_filename, is_safe_path
+from sandbox_paths import _is_system_or_root, get_public_files_dir, resolve_public_files_dir
+from security import safe_path_join
 
 ENABLE_SHELL_TOOL = os.getenv("ENABLE_SHELL_TOOL", "false").lower() in ("true", "1", "yes")
 
@@ -73,9 +74,7 @@ def _find_windows_bash() -> str:
     return candidates[0] if os.path.exists(candidates[0]) else (system_bash or "bash.exe")
 
 
-_SHELL_DESCRIPTION = (
-    "Execute a POSIX Bash shell command on the host system and return stdout/stderr output."
-)
+_SHELL_DESCRIPTION = "Execute a POSIX Bash shell command on the host system and return stdout/stderr output."
 
 
 @tool(description=_SHELL_DESCRIPTION)
@@ -107,13 +106,11 @@ def execute_shell(command: str, working_dir: Optional[str] = None) -> str:
             })
 
     try:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        public_files_dir = os.path.join(base_dir, "public", "files")
-        os.makedirs(public_files_dir, exist_ok=True)
+        sandbox_dir = resolve_public_files_dir()
 
         if working_dir and working_dir.strip():
             try:
-                resolved_cwd = safe_path_join(public_files_dir, working_dir.strip())
+                resolved_cwd = safe_path_join(sandbox_dir, working_dir.strip())
                 if not resolved_cwd.exists() or not resolved_cwd.is_dir():
                     return json.dumps({
                         "status": "error",
@@ -126,7 +123,7 @@ def execute_shell(command: str, working_dir: Optional[str] = None) -> str:
                     "error": "Access denied: working_dir is outside the allowed directory."
                 })
         else:
-            cwd = public_files_dir
+            cwd = str(sandbox_dir)
 
         is_windows = os.name == "nt"
 
@@ -215,12 +212,13 @@ def write_file(file_name: str, content: str) -> str:
     if content is None:
         return json.dumps({"status": "error", "error": "content parameter is required"})
 
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    public_files_dir = os.path.join(base_dir, "public", "files")
-    os.makedirs(public_files_dir, exist_ok=True)
+    try:
+        sandbox_dir = resolve_public_files_dir()
+    except Exception as err:
+        return json.dumps({"status": "error", "error": f"Failed to initialize sandbox directory: {str(err)}"})
 
     try:
-        file_path_obj = safe_path_join(public_files_dir, file_name.strip())
+        file_path_obj = safe_path_join(sandbox_dir, file_name.strip())
         file_path = str(file_path_obj)
         safe_name = file_path_obj.name
     except ValueError:
@@ -256,11 +254,13 @@ def read_files(file_name: str, max_chars: Optional[int] = 8000) -> str:
     if not file_name or not file_name.strip():
         return json.dumps({"status": "error", "error": "file_name parameter is required"})
 
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    public_files_dir = os.path.join(base_dir, "public", "files")
+    try:
+        sandbox_dir = resolve_public_files_dir()
+    except Exception as err:
+        return json.dumps({"status": "error", "error": f"Failed to initialize sandbox directory: {str(err)}"})
 
     try:
-        file_path_obj = safe_path_join(public_files_dir, file_name.strip())
+        file_path_obj = safe_path_join(sandbox_dir, file_name.strip())
         file_path = str(file_path_obj)
         safe_name = file_path_obj.name
     except ValueError:

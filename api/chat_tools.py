@@ -7,6 +7,7 @@ from chat_context import _tool_map
 from chat_messages import _log_raw_response
 from guardrails import sanitize_emojis, validate_output_guardrail
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, ToolMessage
+from tools_registry import resolve_canonical_tool_name
 
 
 async def execute_tool_call(
@@ -17,8 +18,9 @@ async def execute_tool_call(
     last_tool_results: List[Dict[str, Any]],
 ) -> None:
     tool_name = tc.get("name", "")
-    if tool_name == "send_messages" and "send_messages" not in enabled_tool_names and "send_message" in enabled_tool_names:
-        tc["name"] = "send_message"
+    canonical_name = resolve_canonical_tool_name(tool_name, enabled_tool_names)
+    if canonical_name != tool_name:
+        tc["name"] = canonical_name
 
     if tc["name"] not in enabled_tool_names:
         print(f"\n<<< [TOOL BLOCKED] Function: {tc['name']} is disabled in database.", file=sys.stderr, flush=True)
@@ -41,6 +43,19 @@ async def execute_tool_call(
             tool_args = json.loads(tool_args)
         except Exception:
             tool_args = {}
+
+    if tc["name"] == "list_reminders" and isinstance(tool_args, dict):
+        if "status" in tool_args and "status_filter" not in tool_args:
+            status_val = tool_args.pop("status")
+            tool_args["status_filter"] = status_val
+            if isinstance(tc.get("args"), dict):
+                tc["args"].pop("status", None)
+                tc["args"]["status_filter"] = status_val
+            elif isinstance(tc.get("args"), str):
+                try:
+                    tc["args"] = json.dumps(tool_args)
+                except Exception:
+                    pass
 
     if tc["name"] == "knowledge_base":
         if not tool_args.get("query"):
