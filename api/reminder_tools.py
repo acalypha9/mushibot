@@ -6,8 +6,9 @@ from pydantic import BaseModel, Field
 from langchain_core.tools import tool
 
 from reminder_service import (
-    _parse_natural_schedule,
-    normalize_reminder_variables,
+    build_reminder_signature,
+    format_reminder_dict,
+    prepare_reminder_preflight,
     resolve_reminder_recipient,
 )
 
@@ -94,113 +95,103 @@ def set_reminder(
     from models import CronReminder
 
     tz_name = "Asia/Jakarta"
-    prepared_records = []
-
+    preflight_items = []
     for item in validated_items:
-        clean_msg = item.message.strip()
-        if not clean_msg:
-            return json.dumps({"status": "error", "error": "message parameter is required for all reminders"})
-        clean_time = item.time.strip()
-        if not clean_time:
-            return json.dumps({"status": "error", "error": "time parameter is required for all reminders"})
-
-        if not item.title or not item.title.strip():
-            first_line = clean_msg.split("\n")[0]
-            clean_first_line = re.sub(r'[*_~`#]', '', first_line).strip()
-            if clean_first_line and len(clean_first_line) > 3:
-                final_title = clean_first_line[:50].strip()
-            else:
-                final_title = f"Reminder ({clean_time})"
-        else:
-            final_title = item.title.strip()
-
-        try:
-            parsed = _parse_natural_schedule(
-                clean_time,
-                is_recurring=bool(item.is_recurring),
-                tz_name=tz_name,
-                message_limit=item.message_limit,
-            )
-        except Exception as parse_err:
-            return json.dumps({"status": "error", "error": f"Failed to parse schedule '{clean_time}': {str(parse_err)}"})
-
-        clean_channel = (item.channel_type or "WHATSAPP").upper()
-        clean_recipient = resolve_reminder_recipient(item.recipient, clean_channel, channel_id=active_channel_id)
-        clean_msg, vars_list = normalize_reminder_variables(clean_msg, variables=item.variables)
-
-        custom_meta = {k: v for k, v in dict(parsed.get("cmetadata", {})).items() if k not in ("title",)}
-        custom_meta["is_recurring"] = parsed.get("is_recurring", False)
-        if vars_list:
-            custom_meta["_variables"] = vars_list
-            for v in vars_list:
-                custom_meta[v["key"]] = {"type": v["type"], "value": v["value"]}
-
-        reminder_id = uuid.uuid4()
-        new_rem = CronReminder(
-            id=reminder_id,
-            title=final_title,
-            description=parsed.get("description"),
-            message=clean_msg,
-            cron_expression=parsed["cron_expression"],
-            timezone=tz_name,
-            channel_type=clean_channel,
-            channel_id=active_channel_id,
-            target_recipients=clean_recipient,
-            is_active=True,
-            next_run_at=parsed["next_run_at"],
-            cmetadata=custom_meta,
-        )
-        prepared_records.append((new_rem, parsed, vars_list))
+        p, err_msg = prepare_reminder_preflight(item, active_channel_id, tz_name=tz_name)
+        if err_msg or not p:
+            return json.dumps({"status": "error", "error": err_msg or "Failed to prepare reminder"})
+        preflight_items.append(p)
 
     db = SessionLocal()
     try:
-        for new_rem, _, _ in prepared_records:
-            db.add(new_rem)
-        db.commit()
-        for new_rem, _, _ in prepared_records:
-            db.refresh(new_rem)
+        active_candidates: List[CronReminder] = []
+        if hasattr(db, "query"):
+            active_candidates = db.query(CronReminder).filter(CronReminder.is_active == True).all()
+
+        existing_by_sig: Dict[tuple, CronReminder] = {}
+        for cand in active_candidates:
+            cand_chan = cand.channel_type or "WHATSAPP"
+            cand_chan_id = cand.channel_id or "default"
+            resolved_cand_rec = resolve_reminder_recipient(cand.target_recipients, cand_chan, channel_id=cand_chan_id)
+            sig = build_reminder_signature(cand_chan, cand_chan_id, resolved_cand_rec, cand.next_run_at, cand.message)
+            if sig not in existing_by_sig:
+                existing_by_sig[sig] = cand
+
+        item_actions: List[Dict[str, Any]] = []
+        in_batch_seen: Dict[tuple, CronReminder] = {}
+        to_create: List[CronReminder] = []
+        created_count = 0
+        skipped_count = 0
+
+        for p in preflight_items:
+            sig = build_reminder_signature(
+                p["clean_channel"],
+                p["channel_id"],
+                p["clean_recipient"],
+                p["next_run_at"],
+                p["clean_msg"],
+            )
+
+            if sig in existing_by_sig:
+                item_actions.append({"type": "existing", "record": existing_by_sig[sig], "preflight": p})
+                skipped_count += 1
+            elif sig in in_batch_seen:
+                item_actions.append({"type": "intra_batch_dup", "record": in_batch_seen[sig], "preflight": p})
+                skipped_count += 1
+            else:
+                new_rem = CronReminder(
+                    id=uuid.uuid4(),
+                    title=p["title"],
+                    description=p["parsed"].get("description"),
+                    message=p["clean_msg"],
+                    cron_expression=p["parsed"]["cron_expression"],
+                    timezone=p["tz_name"],
+                    channel_type=p["clean_channel"],
+                    channel_id=p["channel_id"],
+                    target_recipients=p["clean_recipient"],
+                    is_active=True,
+                    next_run_at=p["next_run_at"],
+                    cmetadata=p["custom_meta"],
+                )
+                in_batch_seen[sig] = new_rem
+                to_create.append(new_rem)
+                item_actions.append({"type": "novel", "record": new_rem, "preflight": p})
+                created_count += 1
+
+        if to_create:
+            for new_rem in to_create:
+                db.add(new_rem)
+            db.commit()
+            for new_rem in to_create:
+                db.refresh(new_rem)
+
+        batch_result = [
+            format_reminder_dict(action["record"], action["preflight"], action["type"] in ("existing", "intra_batch_dup"))
+            for action in item_actions
+        ]
 
         if is_batch:
-            batch_result = []
-            for new_rem, parsed, vars_list in prepared_records:
-                batch_result.append({
-                    "id": str(new_rem.id),
-                    "title": new_rem.title,
-                    "message": new_rem.message,
-                    "schedule": parsed.get("description"),
-                    "next_run_at": new_rem.next_run_at.strftime("%d:%m:%Y %H:%M:%S UTC") if new_rem.next_run_at else None,
-                    "timezone": tz_name,
-                    "channel": new_rem.channel_type,
-                    "recipient": new_rem.target_recipients or "Current / Default recipient",
-                    "is_recurring": parsed.get("is_recurring", False),
-                    "variables": {v["key"]: v["value"] for v in vars_list} if vars_list else {},
-                })
             return json.dumps({
                 "status": "success",
-                "message": f"Successfully created {len(batch_result)} reminders.",
-                "count": len(batch_result),
+                "message": (
+                    f"Successfully created {created_count} reminders."
+                    if skipped_count == 0
+                    else f"Successfully created {created_count} reminders ({skipped_count} already scheduled)."
+                ),
+                "count": created_count,
+                "created_count": created_count,
+                "skipped_count": skipped_count,
                 "reminders": batch_result,
             }, ensure_ascii=False)
         else:
-            new_rem, parsed, vars_list = prepared_records[0]
             return json.dumps({
                 "status": "success",
-                "message": "Reminder created successfully.",
-                "reminder": {
-                    "id": str(new_rem.id),
-                    "title": new_rem.title,
-                    "message": new_rem.message,
-                    "schedule": parsed.get("description"),
-                    "next_run_at": new_rem.next_run_at.strftime("%d:%m:%Y %H:%M:%S UTC") if new_rem.next_run_at else None,
-                    "timezone": tz_name,
-                    "channel": new_rem.channel_type,
-                    "recipient": new_rem.target_recipients or "Current / Default recipient",
-                    "is_recurring": parsed.get("is_recurring", False),
-                    "variables": {v["key"]: v["value"] for v in vars_list} if vars_list else {},
-                }
+                "message": "Reminder already scheduled." if (item_actions and item_actions[0]["type"] in ("existing", "intra_batch_dup")) else "Reminder created successfully.",
+                "reminder": batch_result[0] if batch_result else {},
             }, ensure_ascii=False)
     except Exception as err:
-        db.rollback()
+        if hasattr(db, "rollback"):
+            db.rollback()
         return json.dumps({"status": "error", "error": f"Failed to create reminder: {str(err)}"})
     finally:
         db.close()

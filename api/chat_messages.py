@@ -189,9 +189,20 @@ async def build_effective_system_prompt(
             f"When creating or updating a reminder for the user without an explicitly mentioned group, always use '{clean_curr_rec}' as the recipient."
         )
 
+    reminder_guidance_prompt = ""
+    if any(getattr(t, "name", "") == "set_reminder" for t in enabled_tools) or (channel and str(channel).upper() == "WHATSAPP"):
+        reminder_guidance_prompt = (
+            "\n\nREMINDER TOOL INSTRUCTIONS:\n"
+            "- Always use the existing `set_reminder` tool to schedule reminders, alerts, or timed messages. Do not use shell commands, terminal tools, or external scripts for date calculations or scheduling.\n"
+            "- For single reminders, call `set_reminder` with `message`, `time`, `recipient`, and `channel_type='WHATSAPP'`.\n"
+            "- For multiple dates or batch reminders, call `set_reminder` ONCE with the `reminders` parameter containing a list of reminder items (`set_reminder(reminders=[{'message': ..., 'time': ..., 'recipient': ...}, ...])`). Never call shell commands or introduce duplicate batch tools when multiple dates are requested.\n"
+            "- For WhatsApp group reminders, you MUST provide the group's canonical '@g.us' JID (e.g. '120363xxx@g.us') as the recipient parameter. Never pass a raw group name.\n"
+            f"- For user reminders without a specified group, use the conversation recipient ('{current_recipient or ''}')."
+        )
+
     time_info = f"\nCurrent Time: {get_current_time_str()}"
 
-    return f"{persona}\n{time_info}\n\n{rules}{kb_collections_prompt}{wa_groups_prompt}{recipient_prompt}"
+    return f"{persona}\n{time_info}\n\n{rules}{kb_collections_prompt}{wa_groups_prompt}{recipient_prompt}{reminder_guidance_prompt}"
 
 
 def prepare_chat_messages(

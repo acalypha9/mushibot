@@ -146,11 +146,19 @@ def _resolve_active_llm(db: Session, requested_model: Optional[str], override_ti
     return get_active_chat_llm(db, requested_model=requested_model, override_timeout=override_timeout)
 
 
-def _resolve_enabled_tools(db: Session) -> list:
+def _resolve_enabled_tools(db: Session, channel: Optional[str] = None) -> list:
     chat_mod = sys.modules.get("chat")
     if chat_mod and hasattr(chat_mod, "get_enabled_tools") and chat_mod.get_enabled_tools is not get_enabled_tools:
-        return chat_mod.get_enabled_tools(db)
-    return get_enabled_tools(db)
+        try:
+            tools = chat_mod.get_enabled_tools(db, channel=channel)
+        except TypeError:
+            tools = chat_mod.get_enabled_tools(db)
+    else:
+        tools = get_enabled_tools(db, channel=channel)
+
+    if channel and str(channel).upper() == "WHATSAPP":
+        tools = [t for t in tools if getattr(t, "name", "") != "execute_shell"]
+    return tools
 
 
 async def run_chat(
@@ -166,7 +174,7 @@ async def run_chat(
 ) -> AsyncGenerator[dict, None]:
     current_chat_recipient_var.set(current_recipient)
     current_chat_channel_id_var.set(channel_id or "default")
-    enabled_tools = _resolve_enabled_tools(db)
+    enabled_tools = _resolve_enabled_tools(db, channel=channel)
     enabled_tool_names = {t.name for t in enabled_tools}
 
     try:

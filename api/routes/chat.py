@@ -413,9 +413,19 @@ async def channel_query_stream(
     conv_id = ctx.conv.id
 
     async def stream_generator():
+        keepalive_interval = float(os.getenv("STREAM_KEEPALIVE_INTERVAL", "15.0"))
+        next_event_task: Optional[asyncio.Task] = None
         try:
             while True:
-                event = await anext(chat_gen)
+                next_event_task = asyncio.create_task(anext(chat_gen))
+                while True:
+                    done, _ = await asyncio.wait({next_event_task}, timeout=keepalive_interval)
+                    if next_event_task in done:
+                        event = next_event_task.result()
+                        next_event_task = None
+                        break
+                    yield json.dumps({"type": "keepalive"}) + "\n"
+
                 if event.get("error"):
                     print(f"[CHANNEL-QUERY-STREAM ERROR] {event.get('error')}", file=sys.stderr, flush=True)
                     yield json.dumps({"text": "Maaf, terjadi kendala saat memproses pesan Anda. Silakan coba beberapa saat lagi."}) + "\n"
@@ -458,6 +468,13 @@ async def channel_query_stream(
             print(f"LLM error in channel_query_stream: {exc}", file=sys.stderr)
             traceback.print_exc(file=sys.stderr)
             yield json.dumps({"text": "Maaf, terjadi kendala saat memproses pesan Anda. Silakan coba beberapa saat lagi."}) + "\n"
+        finally:
+            if next_event_task and not next_event_task.done():
+                next_event_task.cancel()
+                try:
+                    await next_event_task
+                except asyncio.CancelledError:
+                    pass
 
     return StreamingResponse(stream_generator(), media_type="application/x-ndjson")
 

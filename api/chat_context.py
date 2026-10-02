@@ -61,7 +61,7 @@ current_chat_recipient_var: ContextVar[Optional[str]] = ContextVar("current_chat
 current_chat_channel_id_var: ContextVar[Optional[str]] = ContextVar("current_chat_channel_id_var", default=None)
 
 
-def get_enabled_tools(db: Session) -> list:
+def get_enabled_tools(db: Session, channel: Optional[str] = None) -> list:
     try:
         from models import FunctionTool
         from routes.tools import sync_tools_from_file
@@ -75,7 +75,10 @@ def get_enabled_tools(db: Session) -> list:
         builtin_tools = [t for t in all_tools if t.name in enabled_names]
         mcp_tools = get_active_mcp_tools(db)
 
-        return builtin_tools + mcp_tools
+        tools = builtin_tools + mcp_tools
+        if channel and str(channel).upper() == "WHATSAPP":
+            tools = [t for t in tools if getattr(t, "name", "") != "execute_shell"]
+        return tools
     except Exception as err:
         print(f"[GET ENABLED TOOLS WARNING] {err}", file=sys.stderr, flush=True)
         return []

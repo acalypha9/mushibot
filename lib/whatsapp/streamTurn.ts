@@ -1,8 +1,17 @@
+import type { proto } from "@whiskeysockets/baileys";
 import { forwardToChatbotStream } from "./api";
 import { normalizeWhatsAppMessage } from "./parser";
 import { findAndSendFileAttachments } from "./attachments";
 import type { WhatsAppStore } from "./types";
 import type { ChannelItem } from "../channels";
+
+function isRecord(val: unknown): val is Record<string, unknown> {
+  return typeof val === "object" && val !== null;
+}
+
+function isWebMessageInfo(val: unknown): val is proto.IWebMessageInfo {
+  return typeof val === "object" && val !== null && "key" in val;
+}
 
 export async function processAiResponseTurn(params: {
   store: WhatsAppStore;
@@ -13,7 +22,7 @@ export async function processAiResponseTurn(params: {
   pushName?: string;
   participantPhone?: string;
   isGroup: boolean;
-  msg: any;
+  msg?: unknown;
 }): Promise<void> {
   const {
     store,
@@ -30,25 +39,48 @@ export async function processAiResponseTurn(params: {
   if (!store.sock) return;
 
   // Immediately trigger typing state for the chat
-  store.sock.sendPresenceUpdate("composing", targetJid).catch((err: any) => {
+  store.sock.sendPresenceUpdate("composing", targetJid).catch((err: unknown) => {
     console.warn(`[WhatsApp Presence Warning ${store.sessionId}]:`, err);
   });
 
   // Keep typing state active every 4 seconds while AI is thinking and streaming
   const typingInterval = setInterval(() => {
     if (store.sock) {
-      store.sock.sendPresenceUpdate("composing", targetJid).catch(() => {});
+      store.sock.sendPresenceUpdate("composing", targetJid).catch((err: unknown) => {
+        console.warn(`[WhatsApp Presence Warning ${store.sessionId}]:`, err);
+      });
     }
   }, 4000);
 
+  let sentBubbleCount = 0;
+  let fallbackSent = false;
+  const quotedMsg = isWebMessageInfo(msg) ? msg : undefined;
+
+  const sendFallbackMessage = async () => {
+    if (sentBubbleCount > 0 || fallbackSent || !store.sock) return;
+    fallbackSent = true;
+    const fallbackMsg =
+      "Maaf, terjadi kendala saat memproses pesan Anda. Silakan coba beberapa saat lagi.";
+    const normalizedReply = normalizeWhatsAppMessage(fallbackMsg);
+    try {
+      await store.sock.sendMessage(
+        targetJid,
+        { text: normalizedReply },
+        isGroup && quotedMsg ? { quoted: quotedMsg } : undefined
+      );
+    } catch (sendErr: unknown) {
+      console.error(`[WhatsApp Fallback Send Error ${store.sessionId}]:`, sendErr);
+    }
+  };
+
+  const reqTimeoutSec =
+    store.responseTimeout && store.responseTimeout > 30 ? store.responseTimeout : 120;
+  const reqSessionTimeoutSec = store.sessionTimeout || 300;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), (reqTimeoutSec + 15) * 1000);
+
   try {
-    const reqTimeoutSec =
-      store.responseTimeout && store.responseTimeout > 30 ? store.responseTimeout : 120;
-    const reqSessionTimeoutSec = store.sessionTimeout || 300;
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), (reqTimeoutSec + 15) * 1000);
-
     const effectiveSystemPrompt = store.systemPrompt || currentChannelConfig?.systemPrompt || undefined;
     const effectiveModel = store.model || currentChannelConfig?.model || undefined;
     const effectiveChannelId = currentChannelConfig?.id || store.sessionId;
@@ -69,13 +101,11 @@ export async function processAiResponseTurn(params: {
       },
       controller.signal
     );
-    clearTimeout(timeoutId);
 
     if (res.ok && res.body) {
       const reader = res.body.getReader();
       const decoder = new TextDecoder("utf-8");
       let buffer = "";
-      let sentBubbleCount = 0;
 
       const sendTurnBubble = async (rawReply: string) => {
         let replyText = rawReply.trim();
@@ -108,7 +138,7 @@ export async function processAiResponseTurn(params: {
           const sentMsg = await store.sock.sendMessage(
             targetJid,
             { text: normalizedReply },
-            isGroup && isFirstBubble ? { quoted: msg } : undefined
+            isGroup && isFirstBubble && quotedMsg ? { quoted: quotedMsg } : undefined
           );
           sentBubbleCount++;
           console.log(
@@ -144,12 +174,17 @@ export async function processAiResponseTurn(params: {
           const trimmed = line.trim();
           if (!trimmed) continue;
           try {
-            const parsed = JSON.parse(trimmed);
-            const textChunk = parsed.text || parsed.content || parsed.response || "";
-            if (textChunk && typeof textChunk === "string") {
-              await sendTurnBubble(textChunk);
+            const parsed: unknown = JSON.parse(trimmed);
+            if (isRecord(parsed)) {
+              if (parsed.type === "keepalive" || parsed.keepalive === true) {
+                continue;
+              }
+              const textChunk = parsed.text ?? parsed.content ?? parsed.response ?? "";
+              if (typeof textChunk === "string" && textChunk.trim()) {
+                await sendTurnBubble(textChunk);
+              }
             }
-          } catch (e) {
+          } catch (e: unknown) {
             console.error(`[WhatsApp Stream JSON Parse Error ${store.sessionId}]:`, e);
           }
         }
@@ -158,45 +193,43 @@ export async function processAiResponseTurn(params: {
       // Process any leftover buffer
       if (buffer.trim()) {
         try {
-          const parsed = JSON.parse(buffer.trim());
-          const textChunk = parsed.text || parsed.content || parsed.response || "";
-          if (textChunk && typeof textChunk === "string") {
-            await sendTurnBubble(textChunk);
+          const parsed: unknown = JSON.parse(buffer.trim());
+          if (isRecord(parsed)) {
+            if (parsed.type !== "keepalive" && parsed.keepalive !== true) {
+              const textChunk = parsed.text ?? parsed.content ?? parsed.response ?? "";
+              if (typeof textChunk === "string" && textChunk.trim()) {
+                await sendTurnBubble(textChunk);
+              }
+            }
           }
-        } catch (e) {}
+        } catch (e: unknown) {
+          console.error(`[WhatsApp Stream Leftover JSON Parse Error ${store.sessionId}]:`, e);
+        }
       }
 
-      if (sentBubbleCount === 0 && store.sock) {
-        const fallbackMsg =
-          "Maaf, terjadi kendala saat memproses pesan Anda. Silakan coba beberapa saat lagi.";
-        const normalizedReply = normalizeWhatsAppMessage(fallbackMsg);
-        await store.sock.sendMessage(
-          targetJid,
-          { text: normalizedReply },
-          isGroup ? { quoted: msg } : undefined
-        );
+      if (sentBubbleCount === 0) {
+        await sendFallbackMessage();
       }
     } else {
       console.error(
         `[WhatsApp LLM Query Error ${store.sessionId}] API returned status ${res.status}`
       );
-      const fallbackMsg =
-        "Maaf, terjadi kendala saat memproses pesan Anda. Silakan coba beberapa saat lagi.";
-      if (store.sock) {
-        const normalizedReply = normalizeWhatsAppMessage(fallbackMsg);
-        await store.sock.sendMessage(
-          targetJid,
-          { text: normalizedReply },
-          isGroup ? { quoted: msg } : undefined
-        );
-      }
+      await sendFallbackMessage();
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.error(`Error processing WhatsApp AI response for ${store.sessionId}:`, err);
+    if (sentBubbleCount === 0) {
+      await sendFallbackMessage();
+    }
   } finally {
+    clearTimeout(timeoutId);
     clearInterval(typingInterval);
     if (store.sock) {
-      store.sock.sendPresenceUpdate("paused", targetJid).catch(() => {});
+      try {
+        await store.sock.sendPresenceUpdate("paused", targetJid);
+      } catch (err: unknown) {
+        console.warn(`[WhatsApp Presence Warning ${store.sessionId}]:`, err);
+      }
     }
   }
 }
