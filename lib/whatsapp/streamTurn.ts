@@ -38,19 +38,15 @@ export async function processAiResponseTurn(params: {
 
   if (!store.sock) return;
 
-  // Immediately trigger typing state for the chat
-  store.sock.sendPresenceUpdate("composing", targetJid).catch((err: unknown) => {
-    console.warn(`[WhatsApp Presence Warning ${store.sessionId}]:`, err);
-  });
-
-  // Keep typing state active every 4 seconds while AI is thinking and streaming
-  const typingInterval = setInterval(() => {
+  const triggerComposing = () => {
     if (store.sock) {
       store.sock.sendPresenceUpdate("composing", targetJid).catch((err: unknown) => {
         console.warn(`[WhatsApp Presence Warning ${store.sessionId}]:`, err);
       });
     }
-  }, 4000);
+  };
+  triggerComposing();
+  const typingInterval = setInterval(triggerComposing, 4000);
 
   let sentBubbleCount = 0;
   let fallbackSent = false;
@@ -68,6 +64,11 @@ export async function processAiResponseTurn(params: {
         { text: normalizedReply },
         isGroup && quotedMsg ? { quoted: quotedMsg } : undefined
       );
+      console.log(
+        `\n================== [RAW OUTGOING WHATSAPP FALLBACK DELIVERY - ${store.sessionId}] ==================\n` +
+        `To: ${targetJid}\nText: ${normalizedReply}\n` +
+        `======================================================================================\n`
+      );
     } catch (sendErr: unknown) {
       console.error(`[WhatsApp Fallback Send Error ${store.sessionId}]:`, sendErr);
     }
@@ -76,9 +77,33 @@ export async function processAiResponseTurn(params: {
   const reqTimeoutSec =
     store.responseTimeout && store.responseTimeout > 30 ? store.responseTimeout : 120;
   const reqSessionTimeoutSec = store.sessionTimeout || 300;
+  const inactivityTimeoutMs = (reqTimeoutSec + 15) * 1000;
+
+  type StreamAbortReason = "inactivity" | "session_deadline";
+  let abortReason: StreamAbortReason | null = null;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), (reqTimeoutSec + 15) * 1000);
+  const sessionTimeoutId = setTimeout(() => {
+    abortReason = "session_deadline";
+    controller.abort(
+      new Error(`[WhatsApp Stream] Absolute session deadline of ${reqSessionTimeoutSec}s exceeded`)
+    );
+  }, reqSessionTimeoutSec * 1000);
+
+  let inactivityTimeoutId: NodeJS.Timeout | null = null;
+  const resetInactivityTimer = (): void => {
+    if (inactivityTimeoutId) {
+      clearTimeout(inactivityTimeoutId);
+    }
+    inactivityTimeoutId = setTimeout(() => {
+      abortReason = "inactivity";
+      controller.abort(
+        new Error(`[WhatsApp Stream] Inactivity timeout reached (${inactivityTimeoutMs / 1000}s without data)`)
+      );
+    }, inactivityTimeoutMs);
+  };
+
+  resetInactivityTimer();
 
   try {
     const effectiveSystemPrompt = store.systemPrompt || currentChannelConfig?.systemPrompt || undefined;
@@ -112,17 +137,12 @@ export async function processAiResponseTurn(params: {
         if (!replyText) return;
 
         // Guard: NEVER send raw system/LLM error traces to end users on WhatsApp
-        const isRawErrorMsg =
-          replyText.includes("Model provider") ||
-          replyText.includes("[LLM INVOKE ERROR]") ||
-          replyText.includes("404 Not Found") ||
-          replyText.includes("401 Unauthorized") ||
-          replyText.includes("503 Service Unavailable") ||
-          replyText.includes("429 Too Many Requests") ||
-          replyText.includes("AI model is not configured") ||
-          replyText.includes("System initialization required") ||
-          replyText.includes("Cannot chat:") ||
-          replyText.includes("NOT_FOUND");
+        const rawErrorPatterns = [
+          "Model provider", "[LLM INVOKE ERROR]", "404 Not Found", "401 Unauthorized",
+          "503 Service Unavailable", "429 Too Many Requests", "AI model is not configured",
+          "System initialization required", "Cannot chat:", "NOT_FOUND",
+        ];
+        const isRawErrorMsg = rawErrorPatterns.some((pattern) => replyText.includes(pattern));
 
         if (isRawErrorMsg) {
           console.warn(
@@ -142,20 +162,14 @@ export async function processAiResponseTurn(params: {
           );
           sentBubbleCount++;
           console.log(
-            `\n================== [RAW OUTGOING WHATSAPP RESPONSE BUBBLE #${sentBubbleCount} - ${store.sessionId}] ==================`
-          );
-          console.log(`To: ${targetJid}`);
-          console.log(`Text: ${normalizedReply}`);
-          console.log("Outgoing Response JSON:");
-          console.log(
+            `\n================== [RAW OUTGOING WHATSAPP RESPONSE BUBBLE #${sentBubbleCount} - ${store.sessionId}] ==================\n` +
+            `To: ${targetJid}\nText: ${normalizedReply}\nOutgoing Response JSON:\n` +
             JSON.stringify(
               sentMsg || { text: normalizedReply },
-              (key, value) => (typeof value === "bigint" ? value.toString() : value),
+              (_key, value) => (typeof value === "bigint" ? value.toString() : value),
               2
-            )
-          );
-          console.log(
-            `======================================================================================\n`
+            ) +
+            `\n======================================================================================\n`
           );
 
           // Send file attachments for this turn
@@ -166,6 +180,7 @@ export async function processAiResponseTurn(params: {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        resetInactivityTimer();
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
@@ -177,6 +192,7 @@ export async function processAiResponseTurn(params: {
             const parsed: unknown = JSON.parse(trimmed);
             if (isRecord(parsed)) {
               if (parsed.type === "keepalive" || parsed.keepalive === true) {
+                resetInactivityTimer();
                 continue;
               }
               const textChunk = parsed.text ?? parsed.content ?? parsed.response ?? "";
@@ -188,6 +204,11 @@ export async function processAiResponseTurn(params: {
             console.error(`[WhatsApp Stream JSON Parse Error ${store.sessionId}]:`, e);
           }
         }
+      }
+
+      if (inactivityTimeoutId) {
+        clearTimeout(inactivityTimeoutId);
+        inactivityTimeoutId = null;
       }
 
       // Process any leftover buffer
@@ -217,12 +238,28 @@ export async function processAiResponseTurn(params: {
       await sendFallbackMessage();
     }
   } catch (err: unknown) {
-    console.error(`Error processing WhatsApp AI response for ${store.sessionId}:`, err);
+    if (abortReason === "inactivity") {
+      console.error(
+        `[WhatsApp Stream Timeout ${store.sessionId}] Stream aborted due to inactivity (${inactivityTimeoutMs / 1000}s):`,
+        err
+      );
+    } else if (abortReason === "session_deadline") {
+      console.error(
+        `[WhatsApp Stream Timeout ${store.sessionId}] Stream aborted due to total session deadline (${reqSessionTimeoutSec}s):`,
+        err
+      );
+    } else {
+      console.error(`Error processing WhatsApp AI response for ${store.sessionId}:`, err);
+    }
     if (sentBubbleCount === 0) {
       await sendFallbackMessage();
     }
   } finally {
-    clearTimeout(timeoutId);
+    if (inactivityTimeoutId) {
+      clearTimeout(inactivityTimeoutId);
+      inactivityTimeoutId = null;
+    }
+    clearTimeout(sessionTimeoutId);
     clearInterval(typingInterval);
     if (store.sock) {
       try {
