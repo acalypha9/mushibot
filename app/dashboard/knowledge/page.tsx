@@ -44,8 +44,13 @@ function KnowledgeContent() {
 
     if (match) {
       state.setSelectedCol(match);
-      const tabParam = searchParams.get("tab") as any;
-      if (tabParam && ["overview", "documents", "retrieval", "settings"].includes(tabParam)) {
+      const tabParam = searchParams.get("tab");
+      if (
+        tabParam === "overview" ||
+        tabParam === "documents" ||
+        tabParam === "retrieval" ||
+        tabParam === "settings"
+      ) {
         state.setActiveTab(tabParam);
       }
     } else {

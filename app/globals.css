@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
-
 :root {
   --background: #fbfafc;
   --foreground: #1c191f;
@@ -163,6 +161,9 @@ html {
 body {
   min-width: 20rem;
   margin: 0;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-body);
@@ -263,6 +264,7 @@ pre {
   position: relative;
   z-index: 1;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1069,5 +1071,20 @@ pre {
 @media (max-width: 360px) {
   .dashboard-metrics-grid {
     grid-template-columns: 1fr !important;
+  }
+}
+
+.chat-page {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  box-sizing: border-box;
+}
+
+@media (display-mode: standalone) {
+  a,
+  button {
+    -webkit-touch-callout: none;
   }
 }

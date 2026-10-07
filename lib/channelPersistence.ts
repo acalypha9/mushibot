@@ -83,7 +83,7 @@ export function saveSingleChannelConfig(channel: ChannelItem): void {
     const waConfigPath = path.join(process.cwd(), "auth", "whatsapp", channel.id, "whatsapp_config.json");
     if (fs.existsSync(path.dirname(waConfigPath))) {
       try {
-        let existingCfg: any = {};
+        let existingCfg: Record<string, unknown> = {};
         if (fs.existsSync(waConfigPath)) {
           existingCfg = JSON.parse(fs.readFileSync(waConfigPath, "utf-8"));
         }
@@ -102,7 +102,7 @@ export function saveSingleChannelConfig(channel: ChannelItem): void {
           createdAt: channel.createdAt,
         };
         fs.writeFileSync(waConfigPath, JSON.stringify(updatedCfg, null, 2), "utf-8");
-      } catch (e) {}
+      } catch {}
     }
   } else if (channel.type === "TELEGRAM") {
     const tgConfigPath = path.join(process.cwd(), "auth", "telegram", channel.id, "telegram_config.json");
@@ -123,7 +123,7 @@ export function saveSingleChannelConfig(channel: ChannelItem): void {
           createdAt: channel.createdAt,
         };
         fs.writeFileSync(tgConfigPath, JSON.stringify(updatedCfg, null, 2), "utf-8");
-      } catch (e) {}
+      } catch {}
     }
   }
 }

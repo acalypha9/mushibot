@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Optional
 from langchain_core.tools import tool
 
-from fixtures import pokemon_cards
 from knowledge import vector_search
 from sandbox_paths import _is_system_or_root, get_public_files_dir, resolve_public_files_dir
 from security import safe_path_join
@@ -35,25 +34,6 @@ def knowledge_base(query: str, collection_name: str) -> str:
     if not collection_name or not collection_name.strip():
         return json.dumps([{"error": "collection_name parameter is required"}])
     return vector_search(query=query, collection_name=collection_name)
-
-
-@tool
-def check_product(product_id: str) -> str:
-    """Look up product or order information by ID.
-
-    Args:
-        product_id: The ID of the product or order to look up.
-    """
-    if not product_id or not product_id.strip():
-        return json.dumps({"count": 0, "cards": [], "error": "product_id parameter is required"})
-    results = [
-        card for card in pokemon_cards
-        if card.get("product_id") == product_id
-    ]
-    return json.dumps({
-        "count": len(results),
-        "cards": results
-    })
 
 
 def _find_windows_bash() -> str:

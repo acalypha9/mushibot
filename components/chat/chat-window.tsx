@@ -36,7 +36,6 @@ export function ChatWindow({
 
   const {
     streaming,
-    isStreamingRef,
     sendPromptToLLM,
     handleStopStreaming,
   } = useChatStreamTransport({

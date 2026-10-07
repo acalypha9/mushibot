@@ -69,12 +69,7 @@ export default function Modal({
         className={`modal-backdrop ${className || ""}`}
         style={{
           position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          width: "100vw",
-          height: "100vh",
+          inset: 0,
           background: "rgba(0, 0, 0, 0.4)",
           backdropFilter: "blur(4px)",
           WebkitBackdropFilter: "blur(4px)",

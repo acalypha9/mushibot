@@ -7,7 +7,6 @@ from reminder_tools import list_reminders, set_reminder
 from tools_builtin import (
     BLOCKED_SHELL_COMMANDS,
     ENABLE_SHELL_TOOL,
-    check_product,
     execute_shell,
     knowledge_base,
     read_files,
@@ -16,7 +15,6 @@ from tools_builtin import (
 
 all_tools: List[BaseTool] = [
     knowledge_base,
-    check_product,
     execute_shell,
     write_file,
     read_files,

@@ -9,6 +9,7 @@ export const viewport: Viewport = {
   themeColor: "#742774",
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
@@ -28,7 +29,6 @@ export const metadata: Metadata = {
     ],
     shortcut: "/mushibot-logo.png",
     apple: [
-      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
       { url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
   },

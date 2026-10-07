@@ -175,9 +175,19 @@ export async function getWhatsAppGroups(
   const fetchPromise = (async () => {
     try {
       const groupsMap = await store.sock!.groupFetchAllParticipating();
-      const list = Object.values(groupsMap).map((g: any) => {
-        if (Array.isArray(g.participants)) {
-          for (const p of g.participants) {
+      const list = Object.values(groupsMap).map((g) => {
+        const group = g as {
+          id?: string;
+          subject?: string;
+          participants?: Array<{
+            id?: string;
+            lid?: string;
+            jid?: string;
+            phoneNumber?: string | number;
+          }>;
+        };
+        if (Array.isArray(group.participants)) {
+          for (const p of group.participants) {
             let pPhone = "";
             let pLid = "";
 
@@ -201,19 +211,23 @@ export async function getWhatsAppGroups(
         }
 
         return {
-          id: g.id,
-          subject: g.subject || "Unnamed Group",
-          participantsCount: Array.isArray(g.participants) ? g.participants.length : 0,
+          id: group.id || "",
+          subject: group.subject || "Unnamed Group",
+          participantsCount: Array.isArray(group.participants) ? group.participants.length : 0,
         };
       });
       list.sort((a, b) => a.subject.localeCompare(b.subject, undefined, { sensitivity: "base" }));
       groupsCache.set(store.sessionId, { list, timestamp: Date.now() });
       return list;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errObj =
+        err && typeof err === "object"
+          ? (err as { data?: unknown; message?: string; output?: { statusCode?: number } })
+          : null;
       const isRateLimit =
-        err?.data === 429 ||
-        err?.message?.includes("rate-overlimit") ||
-        err?.output?.statusCode === 429;
+        errObj?.data === 429 ||
+        errObj?.message?.includes("rate-overlimit") ||
+        errObj?.output?.statusCode === 429;
       if (isRateLimit) {
         console.warn(
           `[WhatsApp ${store.sessionId}] Rate limit reached on groupFetchAllParticipating. Gracefully returning cached groups (${
@@ -221,7 +235,8 @@ export async function getWhatsAppGroups(
           } groups).`
         );
       } else {
-        console.error(`[WhatsApp ${store.sessionId}] Failed to fetch groups:`, err?.message || err);
+        const errorMsg = errObj?.message || String(err);
+        console.error(`[WhatsApp ${store.sessionId}] Failed to fetch groups:`, errorMsg);
       }
       return cached?.list || [];
     } finally {

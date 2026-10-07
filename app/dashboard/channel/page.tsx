@@ -29,6 +29,26 @@ import AddChannelModal from "./components/AddChannelModal";
 import DeleteChannelModal from "./components/DeleteChannelModal";
 import ResetConversationsModal from "./components/ResetConversationsModal";
 
+interface ProviderConfiguredModel {
+  id: string;
+  name?: string;
+  is_active?: boolean;
+}
+
+interface ProviderItem {
+  id?: string;
+  name?: string;
+  type?: string;
+  provider_type?: string;
+  category?: string;
+  is_active?: boolean;
+  is_default?: boolean;
+  model_name?: string;
+  config?: {
+    configured_models?: ProviderConfiguredModel[];
+  } | null;
+}
+
 // ==========================================
 // 1. Channel Data & Connection Status State
 // ==========================================
@@ -146,7 +166,7 @@ interface ChannelConfigFormState {
 }
 
 type ChannelConfigFormAction =
-  | { type: "SET_FIELD"; field: keyof ChannelConfigFormState; payload: any }
+  | { [K in keyof ChannelConfigFormState]: { type: "SET_FIELD"; field: K; payload: ChannelConfigFormState[K] } }[keyof ChannelConfigFormState]
   | { type: "RESET_FORM"; payload: Partial<ChannelConfigFormState> };
 
 function channelConfigFormReducer(state: ChannelConfigFormState, action: ChannelConfigFormAction): ChannelConfigFormState {
@@ -190,7 +210,7 @@ interface ChannelUiModalState {
 }
 
 type ChannelUiModalAction =
-  | { type: "SET_FIELD"; field: keyof ChannelUiModalState; payload: any }
+  | { [K in keyof ChannelUiModalState]: { type: "SET_FIELD"; field: K; payload: ChannelUiModalState[K] } }[keyof ChannelUiModalState]
   | { type: "RESET_NEW_CHANNEL_FORM" }
   | { type: "DECREMENT_QR_TIMER" };
 
@@ -486,7 +506,6 @@ export default function ChannelPage() {
   const setNewChannelType = (val: "WHATSAPP" | "TELEGRAM") => dispatchUi({ type: "SET_FIELD", field: "newChannelType", payload: val });
   const setNewChannelName = (val: string) => dispatchUi({ type: "SET_FIELD", field: "newChannelName", payload: val });
   const setNewChannelDesc = (val: string) => dispatchUi({ type: "SET_FIELD", field: "newChannelDesc", payload: val });
-  const setNewChannelAutoReply = (val: boolean) => dispatchUi({ type: "SET_FIELD", field: "newChannelAutoReply", payload: val });
   const setNewChannelModel = (val: string) => dispatchUi({ type: "SET_FIELD", field: "newChannelModel", payload: val });
   const setAddChannelError = (val: string | null) => dispatchUi({ type: "SET_FIELD", field: "addChannelError", payload: val });
 
@@ -548,14 +567,14 @@ export default function ChannelPage() {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (!res.ok) return;
-        const data = await res.json();
+        const data: unknown = await res.json();
         if (Array.isArray(data)) {
           const list: ModelOptionItem[] = [];
           let defName = "";
-          for (const p of data) {
+          for (const p of data as ProviderItem[]) {
             if (!p.is_active || p.category !== "chat") continue;
             const models = p.config?.configured_models || [];
-            const activeModels = models.filter((cm: any) => cm.is_active !== false);
+            const activeModels = models.filter((cm: ProviderConfiguredModel) => cm.is_active !== false);
 
             for (const cm of activeModels) {
               const fullId = cm.id.includes("/") ? cm.id : `${p.name}/${cm.id}`;
@@ -1236,13 +1255,13 @@ export default function ChannelPage() {
 
           {/* Top Navigation Tabs */}
           <div className="dashboard-scroll-tabs" style={{ display: "flex", borderBottom: "1px solid #e1dfdd", gap: "24px" }}>
-            {[
+            {([
               { id: "overview", label: "Overview", icon: BookOpen },
               { id: "connection", label: "Connection", icon: Wifi },
               { id: "message", label: "Message & Limits", icon: Sliders },
               { id: "bot", label: "AI Bot & Persona", icon: Bot },
               { id: "broadcast", label: "Broadcast", icon: Megaphone },
-            ].map((tab) => {
+            ] as const).map((tab) => {
               const IconComp = tab.icon;
               const isActive = detailTab === tab.id;
               return (
@@ -1250,7 +1269,7 @@ export default function ChannelPage() {
                   key={tab.id}
                   variant="ghost"
                   onClick={() => {
-                    setDetailTab(tab.id as any);
+                    setDetailTab(tab.id);
                     if (selectedChannel) resetFormValues(selectedChannel);
                     if (tab.id !== "connection" && !isWaConnected) {
                       setShowPairingQR(false);

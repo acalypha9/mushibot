@@ -1,3 +1,4 @@
+import type { WASocket } from "@whiskeysockets/baileys";
 import type fsType from "fs";
 import path from "path";
 
@@ -44,7 +45,7 @@ export function getMimeType(filePath: string): string {
   }
 }
 
-export async function findAndSendFileAttachments(sock: any, targetJid: string, text: string) {
+export async function findAndSendFileAttachments(sock: WASocket | null | undefined, targetJid: string, text: string) {
   if (!sock) return;
 
   const fs = getFs();
@@ -74,9 +75,9 @@ export async function findAndSendFileAttachments(sock: any, targetJid: string, t
               fileName: fileName,
             });
           }
-        } catch (e) {}
+        } catch {}
       }
-    } catch (e) {}
+    } catch {}
   }
 
   // 2. Scan text for explicitly referenced file paths/names

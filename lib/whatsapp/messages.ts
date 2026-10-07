@@ -1,3 +1,4 @@
+import type { proto } from "@whiskeysockets/baileys";
 import {
   recentMessagesMap,
   lidToPnStore,
@@ -14,14 +15,17 @@ export * from "./outbound";
 export * from "./inboundPolicy";
 export * from "./streamTurn";
 
-export async function handleIncomingWhatsAppMessages(store: WhatsAppStore, m: any) {
+export async function handleIncomingWhatsAppMessages(
+  store: WhatsAppStore,
+  m: { messages?: proto.IWebMessageInfo[]; type?: unknown }
+) {
   if (!store.sock) return;
   const sock = store.sock;
 
   console.log(
     `[WhatsApp ${store.sessionId}] messages.upsert received ${m.messages?.length || 0} msg(s), type=${m.type}`
   );
-  for (const msg of m.messages) {
+  for (const msg of m.messages || []) {
     if (msg.key.id && msg.message) {
       recentMessagesMap.set(msg.key.id, msg.message);
       if (recentMessagesMap.size > 2000) {
@@ -50,7 +54,8 @@ export async function handleIncomingWhatsAppMessages(store: WhatsAppStore, m: an
 
     if (process.env.LOG_RAW_MESSAGE_IO === "true") {
       console.log(
-        `\n================== [RAW INCOMING WHATSAPP MESSAGE DEBUG - ${store.sessionId}] ==================`
+        `
+================== [RAW INCOMING WHATSAPP MESSAGE DEBUG - ${store.sessionId}] ==================`
       );
       console.log(
         `From: ${rawRemoteJid} (isGroup: ${isGroup}) | Participant: ${participantPn || participantJid || "N/A"} | EffectiveSender: ${effectiveSenderJid} | ApiSender: ${senderIdForApi}`
@@ -65,7 +70,8 @@ export async function handleIncomingWhatsAppMessages(store: WhatsAppStore, m: an
         )
       );
       console.log(
-        `======================================================================================\n`
+        `======================================================================================
+`
       );
     }
 
@@ -116,7 +122,7 @@ export async function handleIncomingWhatsAppMessages(store: WhatsAppStore, m: an
         promptMessageText,
         senderIdForApi,
         targetJid,
-        pushName: msg.pushName,
+        pushName: msg.pushName || undefined,
         participantPhone: participantPn,
         isGroup,
         msg,

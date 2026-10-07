@@ -76,7 +76,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     if (typeof window !== "undefined") {
       localStorage.removeItem("auth_token");
       onUnauthorizedListeners.forEach((cb) => {
-        try { cb(); } catch (e) {}
+        try { cb(); } catch {}
       });
       if (!window.location.pathname.startsWith("/login")) {
         window.location.href = "/login";

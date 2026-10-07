@@ -36,6 +36,15 @@ interface SearchItem {
   adminOnly?: boolean;
 }
 
+interface KnowledgeCollectionItem {
+  id: string;
+  name: string;
+  description?: string;
+  document_count?: number;
+  chunk_count?: number;
+  embedding_model?: string;
+}
+
 export default function HeaderSearch({ onOpenSettings }: HeaderSearchProps) {
   const router = useRouter();
   const { user, token } = useAuth();
@@ -43,7 +52,7 @@ export default function HeaderSearch({ onOpenSettings }: HeaderSearchProps) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [collections, setCollections] = useState<any[]>([]);
+  const [collections, setCollections] = useState<KnowledgeCollectionItem[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsListRef = useRef<HTMLDivElement>(null);
@@ -58,9 +67,14 @@ export default function HeaderSearch({ onOpenSettings }: HeaderSearchProps) {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok && active) {
-          const data = await res.json();
+          const data: unknown = await res.json();
           if (Array.isArray(data)) {
-            setCollections(data);
+            setCollections(
+              data.filter(
+                (item): item is KnowledgeCollectionItem =>
+                  typeof item === "object" && item !== null && "id" in item && "name" in item
+              )
+            );
           }
         }
       } catch {

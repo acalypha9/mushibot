@@ -3,7 +3,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useAuth } from "../../auth";
 import {
-  Download,
   Loader2,
   CheckCircle2,
   AlertCircle,

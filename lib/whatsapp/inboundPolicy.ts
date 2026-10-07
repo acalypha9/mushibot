@@ -74,19 +74,56 @@ export function isSenderAuthorized(
   return false;
 }
 
-function findPhoneJidInObject(obj: any): string | undefined {
+interface MsgObjLike {
+  participantPn?: string;
+  remoteJidAlt?: string;
+  key?: {
+    participantPn?: string;
+    remoteJidAlt?: string;
+    participant?: string;
+    remoteJid?: string;
+    [k: string]: unknown;
+  };
+  message?: {
+    extendedTextMessage?: {
+      contextInfo?: {
+        participantPn?: string;
+        remoteJidAlt?: string;
+        participant?: string;
+      };
+    };
+  };
+  participant?: string;
+  remoteJid?: string;
+  author?: string;
+  [k: string]: unknown;
+}
+
+interface SocketLike {
+  groupMetadata?: (jid: string) => Promise<{
+    participants?: Array<{
+      id?: string;
+      lid?: string;
+      jid?: string;
+      phoneNumber?: string | number;
+    }>;
+  }>;
+}
+
+function findPhoneJidInObject(obj: unknown): string | undefined {
   if (!obj || typeof obj !== "object") return undefined;
+  const o = obj as MsgObjLike;
 
   const directCandidates = [
-    obj.participantPn,
-    obj.remoteJidAlt,
-    obj.key?.participantPn,
-    obj.key?.remoteJidAlt,
-    obj.message?.extendedTextMessage?.contextInfo?.participantPn,
-    obj.message?.extendedTextMessage?.contextInfo?.remoteJidAlt,
-    obj.participant,
-    obj.key?.participant,
-    obj.author,
+    o.participantPn,
+    o.remoteJidAlt,
+    o.key?.participantPn,
+    o.key?.remoteJidAlt,
+    o.message?.extendedTextMessage?.contextInfo?.participantPn,
+    o.message?.extendedTextMessage?.contextInfo?.remoteJidAlt,
+    o.participant,
+    o.key?.participant,
+    o.author,
   ];
 
   for (const c of directCandidates) {
@@ -96,9 +133,9 @@ function findPhoneJidInObject(obj: any): string | undefined {
   }
 
   // Scan key object keys
-  if (obj.key && typeof obj.key === "object") {
-    for (const k of Object.keys(obj.key)) {
-      const val = obj.key[k];
+  if (o.key && typeof o.key === "object") {
+    for (const k of Object.keys(o.key)) {
+      const val = o.key[k];
       if (typeof val === "string" && val.endsWith("@s.whatsapp.net") && !val.includes("@g.us")) {
         return val;
       }
@@ -106,8 +143,8 @@ function findPhoneJidInObject(obj: any): string | undefined {
   }
 
   // Scan root object keys
-  for (const k of Object.keys(obj)) {
-    const val = obj[k];
+  for (const k of Object.keys(o)) {
+    const val = o[k];
     if (typeof val === "string" && val.endsWith("@s.whatsapp.net") && !val.includes("@g.us")) {
       return val;
     }
@@ -116,16 +153,17 @@ function findPhoneJidInObject(obj: any): string | undefined {
   return undefined;
 }
 
-function findLidInObject(obj: any): string | undefined {
+function findLidInObject(obj: unknown): string | undefined {
   if (!obj || typeof obj !== "object") return undefined;
+  const o = obj as MsgObjLike;
 
   const directCandidates = [
-    obj.key?.participant,
-    obj.participant,
-    obj.key?.remoteJid,
-    obj.remoteJid,
-    obj.author,
-    obj.message?.extendedTextMessage?.contextInfo?.participant,
+    o.key?.participant,
+    o.participant,
+    o.key?.remoteJid,
+    o.remoteJid,
+    o.author,
+    o.message?.extendedTextMessage?.contextInfo?.participant,
   ];
 
   for (const c of directCandidates) {
@@ -140,9 +178,9 @@ function findLidInObject(obj: any): string | undefined {
 export async function resolveInboundSender(
   rawRemoteJid: string,
   isGroup: boolean,
-  msg: any,
+  msg: unknown,
   lidToPnStore: Map<string, string>,
-  sock?: any
+  sock?: SocketLike
 ): Promise<ResolvedInboundSender> {
   let effectiveSenderJid = rawRemoteJid;
   let targetJid = rawRemoteJid;
@@ -188,10 +226,10 @@ export async function resolveInboundSender(
             if (p.id?.endsWith("@s.whatsapp.net")) pPhone = p.id;
             else if (p.id?.endsWith("@lid")) pLid = p.id;
 
-            if ((p as any).lid?.endsWith("@lid")) pLid = (p as any).lid;
-            if ((p as any).jid?.endsWith("@s.whatsapp.net")) pPhone = (p as any).jid;
-            if ((p as any).phoneNumber) {
-              const numDigits = String((p as any).phoneNumber).replace(/\D/g, "");
+            if (p.lid?.endsWith("@lid")) pLid = p.lid;
+            if (p.jid?.endsWith("@s.whatsapp.net")) pPhone = p.jid;
+            if (p.phoneNumber) {
+              const numDigits = String(p.phoneNumber).replace(/\D/g, "");
               if (numDigits.length >= 8) pPhone = `${numDigits}@s.whatsapp.net`;
             }
 
@@ -211,8 +249,9 @@ export async function resolveInboundSender(
       }
     }
 
+    const msgObj = (msg && typeof msg === "object") ? (msg as MsgObjLike) : undefined;
     // Resolved participant identifier: either phone number JID or fallback to LID/raw
-    const resolved = phoneJid || foundLid || (msg.key as any)?.participant || "";
+    const resolved = phoneJid || foundLid || msgObj?.key?.participant || "";
     participantJid = resolved;
     effectiveSenderJid = resolved;
 

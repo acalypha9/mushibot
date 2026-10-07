@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { authFailure, requireAdminRequest } from "@/lib/serverAuth";
 import {
   loadPersistedChannels,
-  savePersistedChannels,
   saveSingleChannelConfig,
   deleteSingleChannel,
-  ChannelItem,
 } from "@/lib/channels";
 
 export async function GET(req: NextRequest) {
@@ -27,7 +25,7 @@ export async function POST(req: NextRequest) {
   if (failure) return failure;
   try {
     const body = await req.json();
-    const { action, channel, channels: clientChannels, channelId } = body;
+    const { action, channel, channelId } = body;
 
     if (action === "sync") {
       const serverChannels = loadPersistedChannels();

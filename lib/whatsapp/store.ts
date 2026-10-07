@@ -4,12 +4,11 @@ import type { proto } from "@whiskeysockets/baileys";
 import type { WhatsAppStore, WhatsAppStatus } from "./types";
 
 declare global {
-  // eslint-disable-next-line no-var
   var __whatsapp_sessions: Map<string, WhatsAppStore> | undefined;
-  // eslint-disable-next-line no-var
   var __whatsapp_keepalive_timer: NodeJS.Timeout | undefined;
-  // eslint-disable-next-line no-var
-  var __whatsapp_incoming_handler: ((store: WhatsAppStore, m: any) => Promise<void>) | undefined;
+  var __whatsapp_incoming_handler:
+    | ((store: WhatsAppStore, m: { messages?: proto.IWebMessageInfo[]; type?: unknown }) => Promise<void>)
+    | undefined;
 }
 
 if (!globalThis.__whatsapp_sessions) {
@@ -83,7 +82,7 @@ export function savePersistedConfig(s: WhatsAppStore) {
     if (!fs.existsSync(authFolder)) {
       fs.mkdirSync(authFolder, { recursive: true });
     }
-    let existing: any = {};
+    let existing: Record<string, unknown> = {};
     if (fs.existsSync(configFile)) {
       try {
         existing = JSON.parse(fs.readFileSync(configFile, "utf-8"));
@@ -164,9 +163,9 @@ export function clearAuthFolder(channelId?: string): void {
     if (store.sock) {
       try {
         store.sock.ev.removeAllListeners("connection.update");
-        (store.sock as any).ws?.close();
+        (store.sock as unknown as { ws?: { close?: () => void } }).ws?.close?.();
         store.sock.end(undefined);
-      } catch (e) {}
+      } catch {}
       store.sock = null;
     }
     const clean = sanitizeSessionId(channelId);

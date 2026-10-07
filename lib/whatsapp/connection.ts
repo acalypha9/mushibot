@@ -71,7 +71,7 @@ export async function disconnectWhatsApp(
       await store.sock.logout();
     } catch {
       try {
-        (store.sock as any).ws?.close();
+        (store.sock as unknown as { ws?: { close?: () => void } }).ws?.close?.();
         store.sock.end(undefined);
       } catch (e) {
         console.error(`[WhatsApp] Error during logout:`, e);
@@ -112,7 +112,7 @@ export async function initWhatsAppSocket(
         store.sock.ev.removeAllListeners("connection.update");
         store.sock.ev.removeAllListeners("creds.update");
         store.sock.ev.removeAllListeners("messages.upsert");
-        (store.sock as any).ws?.close();
+        (store.sock as unknown as { ws?: { close?: () => void } }).ws?.close?.();
         store.sock.end(undefined);
       } catch (e) {
         console.error(`[WhatsApp] Error cleaning up socket during force refresh:`, e);
@@ -169,7 +169,7 @@ export async function initWhatsAppSocket(
       store.sock.ev.removeAllListeners("connection.update");
       store.sock.ev.removeAllListeners("creds.update");
       store.sock.ev.removeAllListeners("messages.upsert");
-      (store.sock as any).ws?.close();
+      (store.sock as unknown as { ws?: { close?: () => void } }).ws?.close?.();
       store.sock.end(undefined);
     } catch (e) {
       console.error(`[WhatsApp] Error closing stale socket:`, e);
@@ -245,7 +245,6 @@ if (!globalThis.__whatsapp_keepalive_timer) {
 
 // Auto-connect background worker for ALL existing session directories on startup
 declare global {
-  // eslint-disable-next-line no-var
   var __whatsapp_startup_scanned: boolean | undefined;
 }
 

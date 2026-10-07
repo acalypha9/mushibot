@@ -98,7 +98,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         suppressHydrationWarning
         style={{
           display: "flex",
-          minHeight: "100vh",
+          minHeight: "100dvh",
           alignItems: "center",
           justifyContent: "center",
           background: "#faf9f8",
@@ -123,7 +123,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       style={{
         display: "flex",
         flexDirection: "column",
-        height: "100vh",
+        height: "100dvh",
         background: "#faf9f8",
         color: "#323130",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",

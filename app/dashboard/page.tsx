@@ -5,35 +5,21 @@ import { useAuth } from "../auth";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import {
-  FileText,
   Database,
-  CheckSquare,
   Sparkles,
   Grid,
-  FileCode,
-  Box,
-  Pencil,
-  ArrowRight,
   Loader2,
   RefreshCw,
   Cpu,
   Zap,
   Users,
-  Layers,
-  ArrowUpRight,
   TrendingUp,
   Activity,
   BarChart3,
-  PieChart,
-  Table as TableIcon,
-  Clock,
-  ChevronRight,
-  Shield,
   MessageSquare,
   BookOpen,
   GitBranch,
-  Wrench,
-  Key
+  Wrench
 } from "lucide-react";
 
 // Formatting utility for numbers
@@ -695,10 +681,8 @@ export default function DashboardPage() {
 
   // Navigation & View Toggles
   const [activeTab, setActiveTab] = useState<"telemetry" | "modules" | "apps">("telemetry");
-  const [appsTab, setAppsTab] = useState<"apps" | "plans" | "solutions">("apps");
   const [timeRange, setTimeRange] = useState<"hour" | "day" | "week">("day");
   const [trendView, setTrendView] = useState<"model" | "account">("model");
-  const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null);
 
   // Data & Loading States
   const [data, setData] = useState<DashboardOverviewData | null>(null);

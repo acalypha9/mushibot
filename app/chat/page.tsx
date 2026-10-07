@@ -166,7 +166,7 @@ export default function ChatPage() {
   }
 
   return (
-    <main className={`chat-page chat-page--${mobileView}`} style={{ display: "flex", height: "100vh", overflow: "hidden", background: "var(--background)", color: "var(--foreground)" }}>
+    <main className={`chat-page chat-page--${mobileView}`} style={{ display: "flex", height: "100dvh", overflow: "hidden", background: "var(--background)", color: "var(--foreground)" }}>
       <ChatSidebar
         className="chat-page__sidebar"
         conversations={conversations} activeConvId={activeConv?.id || null}

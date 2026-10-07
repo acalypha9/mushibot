@@ -26,7 +26,7 @@ export function SplitConversationView({
   msgError
 }: SplitConversationViewProps) {
   return (
-    <div style={{ display: "flex", gap: "20px", height: "calc(100vh - 220px)", minHeight: "550px" }}>
+    <div style={{ display: "flex", gap: "20px", height: "calc(100dvh - 220px)", minHeight: "550px" }}>
       {/* LEFT LIST PANEL */}
       <div
         style={{

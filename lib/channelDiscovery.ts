@@ -52,7 +52,7 @@ export function discoverSavedSessions(existing: ChannelItem[]): ChannelItem[] {
               if (cfg.commandPrefix !== undefined) commandPrefix = cfg.commandPrefix;
               if (typeof cfg.allowPrivate === "boolean") allowPrivate = cfg.allowPrivate;
               if (typeof cfg.allowGroup === "boolean") allowGroup = cfg.allowGroup;
-            } catch (e) {}
+            } catch {}
           }
 
           if (hasCreds) {
@@ -63,7 +63,7 @@ export function discoverSavedSessions(existing: ChannelItem[]): ChannelItem[] {
               if (rawPhone && /^\d+$/.test(rawPhone)) {
                 boundPhone = `+${rawPhone}`;
               }
-            } catch (e) {}
+            } catch {}
           }
 
           // Check if already in existing list
@@ -143,7 +143,7 @@ export function discoverSavedSessions(existing: ChannelItem[]): ChannelItem[] {
                 });
               }
             }
-          } catch (e) {}
+          } catch {}
         }
       }
     }

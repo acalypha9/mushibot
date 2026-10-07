@@ -91,3 +91,6 @@ pnpm-debug.log*
 Thumbs.db
 ehthumbs.db
 desktop.ini
+
+# Stale generated PWA artifacts
+public/workbox-*.js

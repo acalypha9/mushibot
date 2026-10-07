@@ -94,8 +94,10 @@ export function extractMessageText(msgContent: proto.IMessage | null | undefined
     return extractMessageText(msgContent.viewOnceMessageV2.message);
   if (msgContent.documentWithCaptionMessage?.message)
     return extractMessageText(msgContent.documentWithCaptionMessage.message);
-  if ((msgContent as any).viewOnceMessageV2Extension?.message)
-    return extractMessageText((msgContent as any).viewOnceMessageV2Extension.message);
+  const extViewOnce = (
+    msgContent as unknown as { viewOnceMessageV2Extension?: { message?: proto.IMessage | null } }
+  )?.viewOnceMessageV2Extension?.message;
+  if (extViewOnce) return extractMessageText(extViewOnce);
   return "";
 }
 

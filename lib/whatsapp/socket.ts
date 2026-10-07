@@ -1,5 +1,5 @@
 import makeWASocket, {
-  useMultiFileAuthState,
+  useMultiFileAuthState as initMultiFileAuthState,
   DisconnectReason,
   fetchLatestWaWebVersion,
   fetchLatestBaileysVersion,
@@ -41,7 +41,7 @@ export async function createAndBindWhatsAppSocket(
     fs.mkdirSync(authFolder, { recursive: true });
   }
 
-  const { state, saveCreds } = await useMultiFileAuthState(authFolder);
+  const { state, saveCreds } = await initMultiFileAuthState(authFolder);
   let version = cachedWaVersion || FALLBACK_WA_VERSION;
   if (!cachedWaVersion) {
     try {
@@ -160,7 +160,7 @@ export async function createAndBindWhatsAppSocket(
               if (store.sock) {
                 try {
                   store.sock.ev.removeAllListeners("connection.update");
-                  (store.sock as any).ws?.close();
+                  (store.sock as unknown as { ws?: { close?: () => void } }).ws?.close?.();
                   store.sock.end(undefined);
                 } catch (e) {
                   console.error(`[WhatsApp] Error closing socket during auth clear:`, e);
@@ -202,12 +202,11 @@ export async function createAndBindWhatsAppSocket(
     }
 
     if (connection === "close") {
-      const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
+      const statusCode = (lastDisconnect?.error as unknown as { output?: { statusCode?: number } } | undefined)?.output?.statusCode;
       console.log(`[WhatsApp ${store.sessionId} Close Debug]:`, statusCode, lastDisconnect?.error);
 
       const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
       const isReplaced = statusCode === DisconnectReason.connectionReplaced; // 440
-      const isBadSession = statusCode === DisconnectReason.badSession;
 
       store.sock = null;
       store.isInitializing = false;
@@ -302,10 +301,11 @@ export async function createAndBindWhatsAppSocket(
 
   sock.ev.on("contacts.update", (updates) => {
     for (const c of updates) {
-      if (c.id && (c as any).lid) {
-        const cleanId = c.id.split("@")[0].split(":")[0];
-        const cleanLid = (c as any).lid.split("@")[0].split(":")[0];
-        lidToPnStore.set((c as any).lid, c.id);
+      const update = c as unknown as { id?: string; lid?: string };
+      if (update.id && update.lid) {
+        const cleanId = update.id.split("@")[0].split(":")[0];
+        const cleanLid = update.lid.split("@")[0].split(":")[0];
+        lidToPnStore.set(update.lid, update.id);
         lidToPnStore.set(cleanLid, cleanId);
       }
     }

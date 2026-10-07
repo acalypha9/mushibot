@@ -22,20 +22,34 @@ import {
 } from "./types";
 import { cleanRawModelId } from "./metadata";
 
+interface ModelsDevRawModel {
+  id?: string;
+  name?: string;
+  [key: string]: unknown;
+}
+
+interface ModelsDevRawProvider {
+  id?: string;
+  name?: string;
+  models?: Record<string, ModelsDevRawModel>;
+  [key: string]: unknown;
+}
+
 export default function ProvidersPage() {
   const { token } = useAuth();
-  const [modelsDevMap, setModelsDevMap] = useState<Record<string, any>>({});
+  const [modelsDevMap, setModelsDevMap] = useState<Record<string, unknown>>({});
   const [downloadProgress, setDownloadProgress] = useState<Record<string, DownloadProgressInfo>>({});
 
   useEffect(() => {
     fetch("/api/models-dev")
       .then((res) => res.json())
-      .then((data) => {
+      .then((data: unknown) => {
         if (data && typeof data === "object") {
-          const map: Record<string, any> = {};
-          for (const [providerKey, providerObj] of Object.entries(data as Record<string, any>)) {
+          const map: Record<string, unknown> = {};
+          const rawData = data as Record<string, ModelsDevRawProvider>;
+          for (const [providerKey, providerObj] of Object.entries(rawData)) {
             if (providerObj && providerObj.models && typeof providerObj.models === "object") {
-              for (const [modelKey, modelObj] of Object.entries(providerObj.models as Record<string, any>)) {
+              for (const [modelKey, modelObj] of Object.entries(providerObj.models)) {
                 if (!modelObj) continue;
                 const entry = {
                   ...modelObj,

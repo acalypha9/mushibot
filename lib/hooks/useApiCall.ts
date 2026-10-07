@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 
-export interface UseApiCallOptions<T> {
+export interface UseApiCallOptions<T, Raw = { items?: T; data?: T; [key: string]: unknown }> {
   /** Whether to fetch immediately on mount. Default: true */
   immediate?: boolean;
   /** Initial data value */
   initialData?: T;
   /** Transform the JSON response before setting state */
-  transform?: (json: any) => T;
+  transform?: (json: Raw) => T;
 }
 
 export interface UseApiCallReturn<T> {
@@ -21,10 +21,10 @@ export interface UseApiCallReturn<T> {
   setData: React.Dispatch<React.SetStateAction<T>>;
 }
 
-export function useApiCall<T>(
+export function useApiCall<T, Raw = { items?: T; data?: T; [key: string]: unknown }>(
   url: string | null,
   token: string | null,
-  options?: UseApiCallOptions<T>
+  options?: UseApiCallOptions<T, Raw>
 ): UseApiCallReturn<T> {
   const { immediate = true, initialData, transform } = options || {};
 
@@ -83,14 +83,18 @@ export function useApiCall<T>(
         throw new Error(message);
       }
 
-      const finalData: T = transformRef.current ? transformRef.current(json) : (json as T);
+      const finalData: T = transformRef.current ? transformRef.current(json as unknown as Raw) : (json as T);
       setData(finalData);
-    } catch (err: any) {
-      if (err?.name === "AbortError") {
+    } catch (err: unknown) {
+      if (err && typeof err === "object" && "name" in err && (err as { name: unknown }).name === "AbortError") {
         // Fetch was aborted, ignore
         return;
       }
-      setError(err instanceof Error ? err.message : (err?.message || "An unexpected error occurred"));
+      const errMessage =
+        err && typeof err === "object" && "message" in err && typeof (err as { message: unknown }).message === "string"
+          ? (err as { message: string }).message
+          : "An unexpected error occurred";
+      setError(err instanceof Error ? err.message : errMessage);
     } finally {
       if (activeAbortControllerRef.current === abortController) {
         setLoading(false);
