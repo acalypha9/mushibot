@@ -118,6 +118,22 @@ export async function recoverSignalFutureCounter(
   msg: proto.IWebMessageInfo | null | undefined,
   sessionId?: string
 ): Promise<SignalRecoveryResult> {
+  const channelId = sessionId || "default";
+
+  if (msg?.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT) {
+    const params = Array.isArray(msg.messageStubParameters)
+      ? msg.messageStubParameters
+      : [];
+    const paramLengths = params.map((param) =>
+      typeof param === "string" ? param.length : 0
+    );
+    const matched = isFutureCounterDriftMessage(msg);
+
+    console.info(
+      `[WhatsApp ${channelId}] CIPHERTEXT stub: paramCount=${params.length}, paramLengths=[${paramLengths.join(", ")}], matched=${matched}`
+    );
+  }
+
   if (!isFutureCounterDriftMessage(msg)) {
     return { recovered: false };
   }
