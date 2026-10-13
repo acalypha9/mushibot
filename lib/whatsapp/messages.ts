@@ -8,12 +8,14 @@ import type { WhatsAppStore } from "./types";
 import { extractMessageText } from "./parser";
 import { resolveInboundSender, evaluateInboundPolicy } from "./inboundPolicy";
 import { processAiResponseTurn } from "./streamTurn";
+import { recoverSignalFutureCounter } from "./signalRecovery";
 
 export * from "./parser";
 export * from "./attachments";
 export * from "./outbound";
 export * from "./inboundPolicy";
 export * from "./streamTurn";
+export * from "./signalRecovery";
 
 export async function handleIncomingWhatsAppMessages(
   store: WhatsAppStore,
@@ -33,6 +35,17 @@ export async function handleIncomingWhatsAppMessages(
         if (oldestKey) recentMessagesMap.delete(oldestKey);
       }
     }
+
+    try {
+      await recoverSignalFutureCounter(sock, msg, store.sessionId);
+    } catch (recoveryErr: unknown) {
+      const errText =
+        recoveryErr instanceof Error ? recoveryErr.message : String(recoveryErr);
+      console.error(
+        `[WhatsApp ${store.sessionId}] Unexpected error in Signal recovery handler: ${errText}`
+      );
+    }
+
     if (!msg.message) continue;
 
     const rawRemoteJid = msg.key.remoteJid;
